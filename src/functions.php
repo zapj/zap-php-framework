@@ -5,6 +5,10 @@ function app(){
     return \zap\App::instance();
 }
 
+function base_url($url = null) {
+    return app()->baseUrl($url);
+}
+
 /**
  * Site Root Path
  * @param $path

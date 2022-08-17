@@ -2,6 +2,7 @@
 
 namespace zap;
 
+use zap\ErrorHandler;
 use ArrayObject;
 use zap\http\Request;
 use zap\http\Router;
@@ -44,6 +45,7 @@ class App
         }else{
             error_reporting(0);
         }
+        ErrorHandler::register();
         $this->prepare();
 
 
@@ -183,26 +185,31 @@ class App
         return $this->router;
     }
 
-    public function getLogger($name = 'zap'){
-        if(!class_exists('\Monolog\Logger')){
-            throw new \Exception('Class not found [\Monolog\Logger]');
-        }
+    public function getLogger($name = 'app'){
+        $name = config('log.default',$name);
         if(isset($this->logger[$name])){
             return $this->logger[$name];
         }
-        $this->logger[$name] = new \Monolog\Logger($name);
-        $handlerClass = config("log.{$name}.handler");
-        $params = config("log.{$name}.params",[]);
-        if(!class_exists($handlerClass)){
+
+        if(!class_exists('\Monolog\Logger')){
+            throw new \Exception('Monolog is not installed,  Please run \'composer require monolog/monolog\'');
+        }
+
+        try{
+            $this->logger[$name] = new \Monolog\Logger($name);
+            $handlerClass = config("log.{$name}.handler");
+            $params = config("log.{$name}.params",[]);
+            $class = new ReflectionClass($handlerClass);
+            if(!($class->isSubclassOf('\Monolog\Handler\HandlerInterface'))){
+                throw new \Exception('['.$handlerClass.'] must implement \Monolog\Handler\HandlerInterface interface ');
+            }
+            $handler = $class->newInstanceArgs($params);
+
+            $this->logger[$name]->pushHandler($handler);
+        }catch (\ReflectionException $e){
             throw new \Exception('Class not found ['.$handlerClass.']');
         }
-        $class = new ReflectionClass($handlerClass);
-        if(!($class->isSubclassOf('\Monolog\Handler\HandlerInterface'))){
-            throw new \Exception('['.$handlerClass.'] must implement \Monolog\Handler\HandlerInterface interface ');
-        }
-        $handler = $class->newInstanceArgs($params);
 
-        $this->logger[$name]->pushHandler($handler);
         return $this->logger[$name];
     }
 }

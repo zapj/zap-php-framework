@@ -19,6 +19,8 @@ class View {
 
     private $_blocksStack = [];
 
+    protected $templatePaths = [];
+
     /**
      * @var \zap\view\PHPRenderer
      */
@@ -29,6 +31,15 @@ class View {
     public function __construct($name = null,$data = []){
         $this->params = $data;
         $this->viewName = $name;
+        $this->templatePaths[] = resource_path('/views');
+        if(($theme = config('config.theme',false)) !== false){
+            $this->templatePaths[] = themes_path("/$theme");
+            $this->templatePaths[] = themes_path("/$theme");
+        }
+        if(($theme_extend = config('config.theme_extend',false)) !== false){
+            $this->templatePaths[] = themes_path("/$theme_extend");
+            $this->templatePaths[] = themes_path("/$theme_extend");
+        }
         $this->prepare($name);
     }
 
@@ -68,6 +79,11 @@ class View {
         return isset($this->blocks[$name]) ? $this->blocks[$name] : '';
     }
 
+    public function addViewPath($path){
+        $this->templatePaths[] = $path;
+        return $this;
+    }
+
     public function beginBlock($name) {
         ob_start();
         $this->_blocksStack[] = $name;
@@ -97,19 +113,12 @@ class View {
 
     private function resolveTemplate($template){
         $template = str_replace('.','/',$template);
-        $templatePaths = [
-            resource_path('/views/'.$template.'.php'),
-            resource_path('/views/'.$template.'.twig.php')
-        ];
-        if(($theme = config('config.theme',false)) !== false){
-            $templatePaths[] = themes_path("/$theme/".$template.'.php');
-            $templatePaths[] = themes_path("/$theme/".$template.'.twig.php');
-        }
-        if(($theme_extend = config('config.theme_extend',false)) !== false){
-            $templatePaths[] = themes_path("/$theme_extend/".$template.'.php');
-            $templatePaths[] = themes_path("/$theme_extend/".$template.'.twig.php');
-        }
-        foreach($templatePaths as $tplFullPath){
+        foreach($this->templatePaths as $tplPath){
+            $tplFullPath = $tplPath . '/' . $template .'.php';
+            if(is_file($tplFullPath)){
+                return $tplFullPath;
+            }
+            $tplFullPath = $tplPath . '/' . $template .'.twig.php';
             if(is_file($tplFullPath)){
                 return $tplFullPath;
             }

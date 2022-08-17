@@ -10,7 +10,7 @@ class Str {
             $replace = array_values($params);
             return str_replace($search,$replace,$string);
         }
-        return str_replace('{'.$params.'}',$value);
+        return str_replace('{'.$params.'}',$value,$string);
     }
 
     public static function token() {

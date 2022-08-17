@@ -2,7 +2,7 @@
 
 namespace zap\http;
 
-class RestController extends Controller
+abstract class RestController extends Controller
 {
 
     public function index()

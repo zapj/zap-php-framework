@@ -5,6 +5,8 @@ namespace zap;
 use ArrayObject;
 use ReflectionClass;
 
+define('ZAP_SRC', realpath(__DIR__));
+
 class Console
 {
     protected $basePath;

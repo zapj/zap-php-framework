@@ -3,11 +3,11 @@
 namespace zap\traits;
 
 trait SingletonTrait {
-    private $instance;
+    private static $instance;
 
     protected function __construct() { }
 
-    public function instance() {
+    public static function instance() {
         if (!self::$instance) {
             self::$instance = new self();
         }

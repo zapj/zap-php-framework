@@ -25,17 +25,21 @@ class Route {
         return app()->router->any($pattern,$action);
     }
 
-    public static function resource($prefix, $class){
+    public static function resources($prefix, $class){
         Route::get($prefix, "{$class}@index");
-        Route::get($prefix, "{$class}@create");
-        Route::post($prefix, "{$class}@store");
-        Route::get($prefix, "{$class}@show");
-        Route::get("$prefix/{id}/edit", "{$class}@edit");
-        Route::put("$prefix/{id}", "{$class}@update");
-        Route::delete("$prefix/{id}", "{$class}@destroy");
+        Route::get("$prefix/create", "{$class}@create");
+        Route::post("$prefix/save", "{$class}@save");
+        Route::get("$prefix/{id:\d+}", "{$class}@show");
+        Route::get("$prefix/{id:\d+}/edit", "{$class}@edit");
+        Route::put("$prefix/{id:\d+}", "{$class}@update");
+        Route::delete("$prefix/{id:\d+}", "{$class}@destroy");
     }
 
-    public static function prefix($prefix,$params){
-        return app()->router->prefix($prefix,$params);
+    public static function prefix($pattern, $fn, $options = []){
+        return app()->router->prefix($pattern, $fn, $options);
+    }
+
+    public static function filter($methods, $pattern, $fn, $options = []){
+        return app()->router->filter($methods, $pattern, $fn, $options);
     }
 }

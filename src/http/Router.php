@@ -8,6 +8,7 @@ use ReflectionMethod;
 use zap\App;
 use zap\util\Arr;
 use zap\util\Str;
+use zap\view\ZView;
 
 class Router
 {
@@ -33,16 +34,15 @@ class Router
 
     private $requestMethod = 'GET';
 
-    /**
-     * @var string The Server Base Path for Router Execution
-     */
     private $serverBasePath;
 
     public $currentRoute;
 
     public $currentUri;
 
-    const ALL_METHOD = 'GET|POST|PUT|DELETE|OPTIONS|PATCH|HEAD';
+    public $params = [];
+
+    private $defaultMethods = 'GET|POST|PUT|DELETE|OPTIONS|PATCH|HEAD';
 
     /**
      * @return string
@@ -73,6 +73,20 @@ class Router
         $pattern = $this->baseRoute ? rtrim($pattern, '/') : $pattern;
 
         foreach (explode('|', $methods) as $method) {
+            $this->middlewares[$method][] = array(
+                'pattern' => $pattern,
+                'fn' => $fn,
+                'options' => $options
+            );
+        }
+    }
+
+    public function prefix($pattern, $fn, $options = [])
+    {
+        $pattern = $this->baseRoute . '/' . trim($pattern, '/');
+        $pattern = $this->baseRoute ? rtrim($pattern, '/') : $pattern;
+
+        foreach (explode('|', $this->defaultMethods) as $method) {
             $this->middlewares[$method][] = array(
                 'pattern' => $pattern,
                 'fn' => $fn,
@@ -141,43 +155,29 @@ class Router
         $this->baseRoute = $curBaseRoute;
     }
 
-    public function dispatch($callback = null)
+    public function dispatch()
     {
         // middlewares
         if (isset($this->middlewares[$this->requestMethod])
-            && $this->handle($this->middlewares[$this->requestMethod]) === FALSE
+            && $this->handleMiddlewares($this->middlewares[$this->requestMethod]) === FALSE
         ) {
-            if ($callback && is_callable($callback)) {
-                $callback();
-            }
-
-            if ($this->requestMethod == 'HEAD') {
-                ob_end_clean();
-            }
             return true;
         }
-        // Handle all routes
-        $numHandled = 0;
+
+        $found = false;
         if (isset($this->routes[$this->requestMethod])) {
-            $numHandled = $this->handle($this->routes[$this->requestMethod], true);
+            $found = $this->handle($this->routes[$this->requestMethod]);
         }
 
-        // If no route was handled, trigger the 404 (if any)
-        if ($numHandled === 0) {
+        if (!$found) {
             if (isset($this->routes[$this->requestMethod])) {
                 $this->trigger404($this->routes[$this->requestMethod]);
             }
-        } // If a route was handled, perform the finish callback (if any)
-        elseif ($callback && is_callable($callback)) {
-            $callback();
         }
-
-        // If it originally was a HEAD request, clean up after ourselves by emptying the output buffer
-        if ($_SERVER['REQUEST_METHOD'] == 'HEAD') {
+        if ($this->requestMethod == 'HEAD') {
             ob_end_clean();
         }
-        // Return true if a route was handled, false otherwise
-        return $numHandled !== 0;
+        return $found;
     }
 
     public function setNotFound($match_fn, $func = null)
@@ -191,7 +191,6 @@ class Router
 
     public function trigger404($match = null){
 
-        // Counter to keep track of the number of routes we've handled
         $numHandled = 0;
 
         // handle 404 pattern
@@ -235,57 +234,61 @@ class Router
             $this->invoke($this->notFoundCallback['/']);
         } elseif ($numHandled == 0) {
             header($_SERVER['SERVER_PROTOCOL'] . ' 404 Not Found');
+            ZView::render(ZAP_SRC.'/resources/views/http/404.html');
         }
     }
 
     private function patternMatches($pattern, $uri, &$matches, $flags)
     {
+        $pattern = preg_replace('/\/{\w+:(.*?)}/', '/($1)', $pattern);
         $pattern = preg_replace('/\/{(.*?)}/', '/(.*?)', $pattern);
-        return boolval(preg_match_all('#^' . $pattern . '$#', $uri, $matches, PREG_OFFSET_CAPTURE));
+        return boolval(preg_match_all('#^' . $pattern . '$#', $uri, $matches, $flags));
     }
 
-    private function handle($routes, $quitAfterRun = false)
-    {
-        $numHandled = 0;
-
+    private function handleMiddlewares($routes){
         foreach ($routes as $route) {
 
-            // get routing matches
-            $is_match = $this->patternMatches($route['pattern'], $this->currentUri, $matches, PREG_OFFSET_CAPTURE);
+            $is_match = preg_match('#^' . $route['pattern'] . '$#i', $this->currentUri);
+            if ($is_match && $this->invokeMiddleware($route['fn'],$route['options']) === false) {
+                if ($this->requestMethod == 'HEAD') {
+                    ob_end_clean();
+                }
+                return false;
+            }
+        }
+        return true;
+    }
 
-            // is there a valid match?
+    private function handle($routes)
+    {
+        $is_match = false;
+        foreach ($routes as $route) {
+            $is_match = $this->patternMatches($route['pattern'], $this->currentUri, $matches, PREG_OFFSET_CAPTURE);
             if ($is_match) {
 
-                // Rework matches to only contain the matches, not the orig string
                 $matches = array_slice($matches, 1);
 
                 $this->currentRoute = $route;
-                // Extract the matched URL parameters (and only the parameters)
                 $params = array_map(function ($match, $index) use ($matches) {
 
-                    // We have a following parameter: take the substring from the current param position until the next one's position (thank you PREG_OFFSET_CAPTURE)
                     if (isset($matches[$index + 1]) && isset($matches[$index + 1][0]) && is_array($matches[$index + 1][0])) {
                         if ($matches[$index + 1][0][1] > -1) {
                             return trim(substr($match[0][0], 0, $matches[$index + 1][0][1] - $match[0][1]), '/');
                         }
-                    } // We have no following parameters: return the whole lot
+                    }
 
                     return isset($match[0][0]) && $match[0][1] != -1 ? trim($match[0][0], '/') : null;
                 }, $matches, array_keys($matches));
 
-                // Call the handling function with the URL parameters if the desired input is callable
-                if($this->invoke($route['fn'], $params, $route['options']) === false){
-                    return false;
-                }
-                ++$numHandled;
+                $this->invoke($route['fn'], $params, $route['options']);
 
-                if ($quitAfterRun) {
-                    break;
-                }
+
+
+                break;
             }
         }
 
-        return $numHandled;
+        return $is_match;
     }
 
     private function invoke($fn, $params = array(), $options = [])
@@ -293,14 +296,8 @@ class Router
         if (is_callable($fn)) {
             call_user_func_array($fn, $params);
         }
-        else if ($fn == Dispatcher::class) {
-            app()->dispatcher = new Dispatcher($this);
-            app()->dispatcher->dispatch($options);
-            return false;
-        }
         elseif (stripos($fn, '@') !== false) {
             [$controller, $method] = explode('@', $fn);
-
             try {
                 $reflectedMethod = new \ReflectionMethod($controller, $method);
                 if ($reflectedMethod->isPublic() && (!$reflectedMethod->isAbstract())) {
@@ -313,10 +310,37 @@ class Router
                         call_user_func_array(array($controller, $method), $params);
                     }
                 }
-            } catch (\ReflectionException $reflectionException) {
+            } catch (\ReflectionException $e) {
+                //method notfound
+                if(call_user_func_array(array($controller, '_notfound'), $params) === NULL){
+                    $this->trigger404();
+                }
+            }
+        }else if(class_exists($fn)){
+            $controller = new $fn();
+            if(is_array($params) && isset($params[0]) && method_exists($controller,$params[0])){
+                call_user_func_array([$controller,$params[0]],array_slice($params[0],1));
             }
         }
-        return true;
+    }
+
+    private function invokeMiddleware($fn, $options = []){
+        $ret = true;
+        if (is_callable($fn)) {
+            $ret = call_user_func_array($fn,['router'=>$this]);
+        }else {
+            $reflect = new \ReflectionClass($fn);
+            if(!$reflect->isInstantiable() || !$reflect->isSubclassOf(Middleware::class)){
+                return false;
+            }
+            $middleware = $reflect->newInstanceArgs(['options'=>$options]);
+            $middleware->router = $this;
+            $middleware->basePath = $this->getBasePath();
+            $middleware->currentUri = $this->getCurrentUri();
+            app()->dispatcher = $middleware;
+            $ret = $middleware->handle();
+        }
+        return (is_null($ret) || boolval($ret));
     }
 
     public function getCurrentUri()
