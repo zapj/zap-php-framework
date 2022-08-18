@@ -2,12 +2,16 @@
 
 namespace zap\i18n;
 
+use zap\traits\SingletonTrait;
 use zap\util\Str;
 
 class Language {
-    public static $languages = [];
-    public static $language = 'zh_CN';
-    public static $languagePath = [];
+
+    use SingletonTrait;
+
+    public $messages = [];
+    public $language = 'zh_CN';
+    public $languagePath = [ZAP_SRC . '/resources/languages'];
 
     /**
      *
@@ -16,9 +20,9 @@ class Language {
      */
     public static function with($key, $value = null) {
         if (is_array($key)) {
-            static::$languages = array_merge(static::$languages, $key);
+            static::instance()->messages += $key;
         } else {
-            static::$languages[$key] = $value;
+            static::instance()->messages[$key] = $value;
         }
     }
 
@@ -28,7 +32,7 @@ class Language {
      * @param mixed $value
      */
     public static function set($key, $value) {
-        static::$languages[$key] = $value;
+        static::instance()->messages[$key] = $value;
     }
 
     /**
@@ -37,23 +41,22 @@ class Language {
      * @return mixed
      */
     public static function get($key) {
-        if (isset(static::$languages[$key])) {
-            return static::$languages[$key];
+        if (isset(static::instance()->messages[$key])) {
+            return static::instance()->messages[$key];
         }
         return $key;
     }
 
-    public static function trans($name,$params = null){
-        global $_LANG;
-        list($filename,$langName) = explode('.',$name);
-
-        if(!isset($_LANG[$name])){
-            return $name;
+    public static function trans($name,$params = null,$value = null){
+        [$filename,$msgKey] = explode('.',$name);
+        if (!isset(static::instance()->messages['lang.'.$filename])) {
+            static::load($filename);
         }
-        if(!is_null($params)){
-            return $_LANG[$name];
+        $message = static::get($msgKey);
+        if(is_null($params)){
+            return $message;
         }
-        return Str::format($_LANG[$name],$params);
+        return Str::format($message,$params,$value);
     }
 
     /**
@@ -61,7 +64,7 @@ class Language {
      * @return bool
      */
     public static function has($key) {
-        return array_key_exists($key, static::$languages);
+        return array_key_exists($key, static::instance()->messages);
     }
 
     /**
@@ -69,43 +72,40 @@ class Language {
      * @param string $name
      * @return bool
      */
-    public static function loadLanguage($name) {
-        if (isset(static::$languages['load.records']) && array_key_exists($name, static::$languages['load.records'])) {
-            return true;
-        }
-        $found = false;
-        if (is_array(static::$languagePath)) {
-            foreach (static::$languagePath as $path) {
-                $file = $path . '/' . $name . '.php';
+    public static function load($name) {
+        if (is_array(static::instance()->languagePath)) {
+            $language = static::instance()->language;
+            foreach (static::instance()->languagePath as $path) {
+                $file = $path . "/{$language}/{$name}.php";
                 if (file_exists($file)) {
                     $_LANG = include($file);
-                    if (!empty($_LANG) && is_array($_LANG)) {
-                        static::$languages+=$_LANG;
-                        $found = true;
+                    if (!is_null($_LANG) && is_array($_LANG)) {
+                        static::instance()->messages+=$_LANG;
+                        static::instance()->messages['lang.'.$name] = true;
                     }
                 }
             }
         }
-        return $found;
     }
 
     /**
      * @param string $language
      */
-    public static function setLanguage($language) {
-        static::$language = $language;
-        static::$languagePath[] = resource_path('lang/');
-        Language::loadLanguage($language);
+    public static function useLanguage($language = 'zh_CN') {
+        static::instance()->language = $language;
+        static::addPath(resource_path('/languages'));
     }
 
     /**
      * @param string $path
      */
-    public static function addSearchPath($path) {
-        static::$languagePath[] = realpath($path);
+    public static function addPath($path) {
+        if(array_search($path,static::instance()->languagePath) === false){
+            static::instance()->languagePath[] = $path;
+        }
     }
 
-    public static function getLanguagePaths() {
-        return static::$languagePath;
+    public static function getPaths() {
+        return static::instance()->languagePath;
     }
 }
