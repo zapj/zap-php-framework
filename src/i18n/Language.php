@@ -55,6 +55,9 @@ class Language {
         $message = static::get($msgKey);
         if(is_null($params)){
             return $message;
+        }else if(!is_array($params)){
+            $value = $params;
+            $params = 'value';
         }
         return Str::format($message,$params,$value);
     }
