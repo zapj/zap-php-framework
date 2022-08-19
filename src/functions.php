@@ -103,17 +103,13 @@ function arrayToObject($array) {
     }
 
     $object = new \stdClass();
-    if (is_array($array) && count($array) > 0) {
-        foreach ($array as $name => $value) {
-            $name = strtolower(trim($name));
-            if (!empty($name)) {
-                $object->$name = arrayToObject($value);
-            }
+    foreach ($array as $name => $value) {
+        $name = strtolower(trim($name));
+        if (!empty($name)) {
+            $object->$name = arrayToObject($value);
         }
-        return $object;
-    } else {
-        return FALSE;
     }
+    return $object;
 }
 
 function zap_pp() {
