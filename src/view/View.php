@@ -92,7 +92,7 @@ class View {
 
     public function endBlock() {
         $blockName = array_pop($this->_blocksStack);
-        $this->blocks[$blockName] = ob_get_clean();
+        $this->blocks[$blockName] = rtrim(ob_get_clean());
     }
 
     public static function make($name = null,$data = []){
@@ -100,6 +100,7 @@ class View {
     }
 
     public function display($return = false){
+        Block::$view = $this;
         return $this->engine->render($return);
     }
 
