@@ -124,13 +124,6 @@ class Request {
         return Arr::get($_REQUEST, $name, $default);
     }
 
-
-
-    /**
-     * Return's the protocol that the request was made with
-     *
-     * @return  string
-     */
     public static function protocol() {
         if (static::server('HTTPS') == 'on' or
             static::server('HTTPS') == 1 or
@@ -254,15 +247,26 @@ class Request {
 
     public function init(){
         $this->method = $_SERVER['REQUEST_METHOD'];
-        if ($this->method == 'POST' ) {
-            array_key_exists('HTTP_X_HTTP_METHOD', $_SERVER) && $this->method = $_SERVER['HTTP_X_HTTP_METHOD'];
+        if ($this->method == 'POST' && array_key_exists('HTTP_X_HTTP_METHOD', $_SERVER)) {
+            $this->method = $_SERVER['HTTP_X_HTTP_METHOD'];
             array_key_exists('X-HTTP-Method-Override', $_SERVER) && $this->method = $_SERVER['X-HTTP-Method-Override'];
+        } else if ($this->method == 'POST' && array_key_exists('X-HTTP-Method-Override', $_SERVER)) {
+            $this->method = $_SERVER['X-HTTP-Method-Override'];
         } else if ($_SERVER['REQUEST_METHOD'] == 'POST' && array_key_exists('_method', $_POST)) {
-            $HTTP_X_HTTP_METHOD = $_POST['_method'];
-            if ($HTTP_X_HTTP_METHOD == 'DELETE' || $HTTP_X_HTTP_METHOD == 'PUT') {
-                $this->method = $HTTP_X_HTTP_METHOD;
+            $this->method = $_POST['_method'];
+        }
+    }
+
+    function getPreferredLanguage() {
+        $default = config('config.fallback_locale','zh-CN');
+        $available_languages = config('config.available_languages',[]);
+        $acceptLanguages = preg_split('#[,;]#',$_SERVER["HTTP_ACCEPT_LANGUAGE"]);
+        foreach($acceptLanguages as $language) {
+            if(array_search($language,$available_languages)){
+                return $language;
             }
         }
+        return $default;
     }
 
 
