@@ -150,6 +150,4 @@ class View {
         $this->engine = new PHPRenderer($this);
     }
 
-
-
 }
