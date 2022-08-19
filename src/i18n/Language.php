@@ -70,7 +70,6 @@ class Language {
     /**
      * 加载语言文件
      * @param string $name
-     * @return bool
      */
     public static function load($name) {
         if (is_array(static::instance()->languagePath)) {
@@ -80,7 +79,7 @@ class Language {
                 if (file_exists($file)) {
                     $_LANG = include($file);
                     if (!is_null($_LANG) && is_array($_LANG)) {
-                        static::instance()->messages+=$_LANG;
+                        static::instance()->messages = array_merge(static::instance()->messages,$_LANG);
                         static::instance()->messages['lang.'.$name] = true;
                     }
                 }
@@ -91,7 +90,7 @@ class Language {
     /**
      * @param string $language
      */
-    public static function useLanguage($language = 'zh_CN') {
+    public static function useLanguage($language = 'zh-CN') {
         static::instance()->language = $language;
         static::addPath(resource_path('/languages'));
     }
