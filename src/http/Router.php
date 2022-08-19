@@ -85,7 +85,6 @@ class Router
     {
         $pattern = $this->baseRoute . '/' . trim($pattern, '/');
         $pattern = $this->baseRoute ? rtrim($pattern, '/') : $pattern;
-
         foreach (explode('|', $this->defaultMethods) as $method) {
             $this->middlewares[$method][] = array(
                 'pattern' => $pattern,
@@ -326,21 +325,31 @@ class Router
 
     private function invokeMiddleware($fn, $options = []){
         $ret = true;
-        if (is_callable($fn)) {
-            $ret = call_user_func_array($fn,['router'=>$this]);
-        }else {
-            $reflect = new \ReflectionClass($fn);
-            if(!$reflect->isInstantiable() || !$reflect->isSubclassOf(Middleware::class)){
+        if (is_callable($fn) && !isset($options['namespace'])) {
+            $ret = call_user_func_array($fn, ['router' => $this]);
+        } else if(is_callable($fn) && isset($options['namespace'])) {
+            if(call_user_func_array($fn,['router'=>$this]) === false){
                 return false;
             }
-            $middleware = $reflect->newInstanceArgs(['options'=>$options]);
-            $middleware->router = $this;
-            $middleware->basePath = $this->getBasePath();
-            $middleware->currentUri = $this->getCurrentUri();
-            app()->dispatcher = $middleware;
-            $ret = $middleware->handle();
+            $class = Arr::get($options,'dispatcher',Dispatcher::class);
+            $ret = $this->callMiddleware($class,$options);
+        }else {
+            $ret = $this->callMiddleware($fn,$options);
         }
-        return (is_null($ret) || boolval($ret));
+        return (is_null($ret) || $ret);
+    }
+
+    private function callMiddleware($fn,$options = []){
+        $reflect = new \ReflectionClass($fn);
+        if(!$reflect->isInstantiable() || !$reflect->isSubclassOf(Middleware::class)){
+            return false;
+        }
+        $middleware = $reflect->newInstanceArgs(['options'=>$options]);
+        $middleware->router = $this;
+        $middleware->basePath = $this->getBasePath();
+        $middleware->currentUri = $this->getCurrentUri();
+        app()->dispatcher = $middleware;
+        return $middleware->handle();
     }
 
     public function getCurrentUri()
