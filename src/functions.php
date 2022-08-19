@@ -95,7 +95,7 @@ function arr_set(&$array, $key,$value) {
 /**
  * array to object
  * @param array $array
- * @return \stdClass|boolean
+ * @return \stdClass
  */
 function arrayToObject($array) {
     if (!is_array($array)) {
