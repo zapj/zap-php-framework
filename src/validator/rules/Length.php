@@ -5,13 +5,13 @@ namespace zap\validator\rules;
 class Length extends \zap\validator\AbstractRule
 {
 
-    public function validate($name, $value, $params = [])
+    public function validate($name, $value)
     {
         $length = mb_strlen($value);
-        if (is_array($params) && count($params) == 2) {
-            return $length >= $params[0] && $length <= $params[1];
+        if (is_array($this->params) && count($this->params) == 2) {
+            return $length >= $this->params[0] && $length <= $this->params[1];
         }
-        return $length == (is_array($params) ? $params[0] : $params);
+        return $length == (is_array($this->params) ? $this->params[0] : $this->params);
     }
 
 }

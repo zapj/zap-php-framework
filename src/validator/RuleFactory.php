@@ -3,6 +3,7 @@
 namespace zap\validator;
 
 use Exception;
+use ReflectionException;
 use ReflectionClass;
 use zap\traits\SingletonTrait;
 
@@ -25,7 +26,7 @@ class RuleFactory
      * @return \zap\validator\AbstractRule
      * @throws \Exception
      */
-    public function rule($ruleName,$validator){
+    public function make($ruleName,$validator){
         if(isset($this->instanceRules[$ruleName])){
             return $this->instanceRules[$ruleName];
         }
@@ -33,11 +34,11 @@ class RuleFactory
             try {
                 $name = $namespace . '\\' . ucfirst(str_replace(' ','',ucwords(str_replace(['-','_'],' ',$ruleName))));
                 $this->instanceRules[$ruleName] = $this->createRule($name,['validator'=>$validator]);
-                return $this->instanceRules[$ruleName];
             } catch (ReflectionException $exception) {
                 continue;
             }
         }
+        return $this->instanceRules[$ruleName];
     }
 
     private function createRule($ruleName, $args = [])

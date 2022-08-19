@@ -4,11 +4,11 @@ namespace zap\validator\rules;
 
 class Min extends \zap\validator\AbstractRule
 {
-    public function validate($name, $value, $params = [])
+    public function validate($name, $value)
     {
         if (!is_numeric($value)) {
             return false;
         }
-        return $value >= $params;
+        return $value >= $this->params;
     }
 }
