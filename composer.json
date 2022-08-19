@@ -1,6 +1,6 @@
 {
-  "name": "zap/zap-php-framework",
-  "description": "simple php framework",
+  "name": "zapj/zap-php-framework",
+  "description": "zap php framework",
   "license": "MIT",
   "type": "library",
   "authors": [
