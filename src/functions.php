@@ -55,7 +55,7 @@ function config($name,$default = null){
 }
 
 function config_set($name,$value){
-    return \zap\Config::instance()->set($name,$value);
+    \zap\Config::instance()->set($name,$value);
 }
 
 function config_has($name){
@@ -94,8 +94,8 @@ function arr_set(&$array, $key,$value) {
 
 /**
  * array to object
- * @param type $array
- * @return boolean|\stdClass
+ * @param array $array
+ * @return \stdClass|boolean
  */
 function arrayToObject($array) {
     if (!is_array($array)) {
@@ -139,13 +139,22 @@ function base64_url_decode($base64Url)
 }
 
 /**
- * @param $name default zap name
+ * Log
+ *
+ * @param string $name default app name
  *
  * @return \Monolog\Logger
  * @throws \Exception
  */
-function logger($name = 'zap'){
+function logger($name = 'app'){
     return app()->getLogger($name);
 }
+
+function trans($key,$params=null,$value=null){
+    return \zap\i18n\Language::trans($key,$params,$value);
+}
+
+
+
 
 
