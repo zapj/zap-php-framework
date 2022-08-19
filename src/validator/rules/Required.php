@@ -7,7 +7,7 @@ use zap\validator\AbstractRule;
 class Required extends AbstractRule
 {
 
-    public function validate($name, $value, $params = [])
+    public function validate($name, $value)
     {
         if(!is_array($value)){
             $value = [$value];

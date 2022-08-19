@@ -5,13 +5,13 @@ namespace zap\validator\rules;
 class LengthMin extends \zap\validator\AbstractRule
 {
 
-    public function validate($name, $value, $params = [])
+    public function validate($name, $value)
     {
         $length = mb_strlen($value);
-        if (is_array($params)) {
+        if (is_array($this->params)) {
             return false;
         }
-        return $length >= $params;
+        return $length >= $this->params;
     }
 
 }

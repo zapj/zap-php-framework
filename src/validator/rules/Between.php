@@ -2,19 +2,21 @@
 
 namespace zap\validator\rules;
 
-class Between extends \zap\validator\AbstractRule
+use zap\validator\AbstractRule;
+
+class Between extends AbstractRule
 {
 
-    public function validate($name, $value, $params = [])
+    public function validate($name, $value)
     {
         if (!is_numeric($value)) {
             return false;
         }
-        if (!is_array($params) && count($params[0]) !== 2) {
+        if (!is_array($this->params) && count($this->params[0]) !== 2) {
             return false;
         }
-        $min = $params[0];
-        $max = $params[1];
+        $min = $this->params[0];
+        $max = $this->params[1];
         return $value >= $min && $value <= $max;
 
 

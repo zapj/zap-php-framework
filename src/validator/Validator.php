@@ -3,6 +3,7 @@
 namespace zap\validator;
 
 use zap\http\Request;
+use zap\util\Arr;
 use zap\util\Str;
 use zap\validator\RuleFactory;
 
@@ -22,6 +23,8 @@ class Validator
 
     protected $fieldLabels = [];
 
+    protected $validData = [];
+
     public function __construct($data = null){
         if($data == null){
             $this->data = Request::method() == 'GET' ? $_GET : $_POST;
@@ -31,7 +34,11 @@ class Validator
     }
 
     /**
-     * @return mixed
+     * @param $ruleName
+     * @param $fields
+     * @param $params
+     *
+     * @return \zap\validator\Validator
      */
     public function rule($ruleName,$fields = [],$params = [])
     {
@@ -41,11 +48,6 @@ class Validator
         foreach($fields as $field){
             $this->rules[$ruleName][$field] = $params;
         }
-    }
-
-    public function addRule($name,$callback,$message){
-        $this->instanceRules[$name] = $callback;
-        $this->instanceRulesMessage[$name] = $message;
         return $this;
     }
 
@@ -62,18 +64,27 @@ class Validator
 
     public function validate(){
         foreach($this->rules as $ruleName => $rule){
-            $r = RuleFactory::instance()->rule($ruleName,$this);
+            $r = RuleFactory::instance()->make($ruleName,$this);
 
             foreach ($rule as $field=>$params) {
+                $r->setParams($params);
                 $value = $this->getValue($this->data, $field);
-                $ret = $r->validate($field,$value,$params);
+                $ret = $r->validate($field,$value);
                 if(!$ret){
-                    $this->error($field,'validator.'.strtolower($ruleName),$params);
+                    $this->addError($field,$ruleName,$value,'validator.'. $r->translateMsgKey(),$r->translateParams());
+                }else{
+                    $this->validData[$field] = $value;
                 }
-
+                if(!$ret && $this->stopFirstFail){
+                    break;
+                }
             }
         }
         return !((bool)count($this->errors));
+    }
+
+    public function getValidData(){
+        return $this->validData;
     }
 
 
@@ -112,10 +123,23 @@ class Validator
         return $data;
     }
 
-    public function error($field, $message, $params = array())
+    public function addError($field,$rule,$value, $message, $params = array())
     {
-        $params['field'] = $field;
-        $this->errors[$field][] = Str::format($message,$params);
+        if(!is_array($params)){
+            $params = ['param'=>$params];
+        }
+        $params['value'] = $value;
+        $params['field'] = isset($this->fieldLabels[$field]) ? $this->fieldLabels[$field] : '';
+        $this->errors[$field][$rule] = trans($message,$params);
+        return $this;
+    }
+
+    public function setLabels($field,$title = null){
+        if(is_array($field)){
+            $this->fieldLabels = array_merge($this->fieldLabels,$field);
+        }else{
+            $this->fieldLabels[$field] = $title;
+        }
         return $this;
     }
 
@@ -123,6 +147,7 @@ class Validator
         $this->data = [];
         $this->rules = [];
         $this->fieldLabels = [];
+        $this->validData = [];
     }
 
     public function setData($data){
@@ -130,18 +155,21 @@ class Validator
         $this->data = $data;
     }
 
-    public function label($label,$name){
+    public function setLabel($label,$name){
         $this->fieldLabels[$label] = $name;
-        return $this;
-    }
-
-    public function labels($labels = []){
-       $this->fieldLabels = array_merge($this->fieldLabels, $labels);
         return $this;
     }
 
     public function errors(){
         return $this->errors;
+    }
+
+    public function error($name,$allErrors = false){
+        if($allErrors){
+            return Arr::get($this->errors,$name);
+        }else{
+            return current($this->errors[$name]);
+        }
     }
 
 
