@@ -87,11 +87,12 @@ class View {
     public function beginBlock($name) {
         ob_start();
         $this->_blocksStack[] = $name;
+        echo $name;
     }
 
     public function endBlock() {
         $blockName = array_pop($this->_blocksStack);
-        $this->blocks[$blockName] = ob_end_clean();
+        $this->blocks[$blockName] = ob_get_clean();
     }
 
     public static function make($name = null,$data = []){
@@ -123,6 +124,7 @@ class View {
                 return $tplFullPath;
             }
         }
+        return null;
     }
 
 
