@@ -87,6 +87,10 @@ class Validator
         return $this->validData;
     }
 
+    public function get($name,$default = null){
+        return Arr::get($this->validData,$name,$default);
+    }
+
 
 
     public function getValue($data,$field)
@@ -162,6 +166,16 @@ class Validator
 
     public function errors(){
         return $this->errors;
+    }
+
+    public function firstOfAll(){
+        $allErrors = [];
+        foreach($this->errors as $field => $errors){
+            if(count($errors) >= 1){
+                $allErrors[$field] = current($errors);
+            }
+        }
+        return $allErrors;
     }
 
     public function error($name,$allErrors = false){

@@ -14,7 +14,10 @@
     "ext-pdo": "*",
     "ext-curl": "*",
     "ext-mbstring": "*",
-    "ext-json": "*"
+    "ext-json": "*",
+    "ext-openssl": "*",
+    "ext-dom": "*",
+    "ext-simplexml": "*"
   },
   "autoload": {
     "files": ["src/functions.php"],

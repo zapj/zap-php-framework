@@ -5,171 +5,157 @@ namespace zap;
 use PDO;
 use PDOException;
 use PDOStatement;
+use zap\db\Query;
+use zap\traits\SingletonTrait;
 use zap\util\Arr;
-use zap\zdb\ZPDO;
+use zap\db\ZPDO;
 
 
 class DB
 {
+
+    /**
+     * @var array 连接池
+     */
     protected static $conn_pool = [];
 
-    protected static $default_name = 'default';
-
-    protected function __construct() {}
-    protected function __clone() {}
+    /**
+     * @var string 默认连接名字
+     */
+    protected static $default_name;
 
     /**
      * @param $default_name string connection name
-     * @return \zap\zdb\ZPDO
+     * @return \zap\db\ZPDO
      */
-    public static function connect(string $default_name = 'default')
+    public static function connect($default_name = null)
     {
-        if (!isset(static::$conn_pool[$default_name]))
-        {
-            $opt  = array(
-                PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ,
-                PDO::ATTR_EMULATE_PREPARES   => FALSE,
-            );
-            $config = config("database.connections.{$default_name}");
-            $db_driver = Arr::get($config,'driver');
-            $db_host = Arr::get($config,'host');
-            $db_name = Arr::get($config,'database');
-            $db_user = Arr::get($config,'username');
-            $db_passwd = Arr::get($config,'password');
-            $db_charset = Arr::get($config,'charset','utf8');
-            $db_collation = Arr::get($config,'collation','');
-            $db_prefix = Arr::get($config,'prefix');
-            $db_port = Arr::get($config,'port');
-            $unix_socket = Arr::get($config,'unix_socket');
-            if($unix_socket){
-                $dsn = sprintf('%s:unix_socket=%s;dbname=%s;;charset=%s',$db_driver,$unix_socket,$db_name,$db_charset);
-            }else{
-                $dsn = sprintf('%s:host=%s;dbname=%s;port=%d;charset=%s',$db_driver,$db_host,$db_name,$db_port,$db_charset);
-            }
+        if(is_null(static::$default_name)){
+            static::$default_name = config("database.default");
+        }
+        if(is_null($default_name)){
+            $default_name = static::$default_name;
+        }
+        if(isset(static::$conn_pool[$default_name])){
+            return static::$conn_pool[$default_name];
+        }
 
-            static::$conn_pool[$default_name] = new ZPDO($dsn, $db_user, $db_passwd, $opt);
-            static::$conn_pool[$default_name]->setTablePrefix($db_prefix);
-            if($db_driver == 'mysql'){
-                $db_collation = empty($db_collation) ? '' : " collate {$db_collation} ";
-                static::$conn_pool[$default_name]->prepare("set names {$db_charset} {$db_collation}");
-            }
+        $opt  = array(
+            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ,
+            PDO::ATTR_EMULATE_PREPARES   => FALSE,
+        );
+        $config = config("database.connections.{$default_name}");
+        if(empty($config)){
+            throw new \Exception("could not find database config : {$default_name},Please check config/database.php");
+        }
+        $db_driver = Arr::get($config,'driver','mysql');
+        $db_host = Arr::get($config,'host','localhost');
+        $db_name = Arr::get($config,'database');
+        $db_user = Arr::get($config,'username');
+        $db_passwd = Arr::get($config,'password');
+        $db_charset = Arr::get($config,'charset','utf8');
+        $db_collation = Arr::get($config,'collation','');
+        $db_prefix = Arr::get($config,'prefix');
+        $db_port = Arr::get($config,'port',3306);
+        $unix_socket = Arr::get($config,'unix_socket');
+        if($unix_socket){
+            $dsn = sprintf('%s:unix_socket=%s;dbname=%s;;charset=%s',$db_driver,$unix_socket,$db_name,$db_charset);
+        }else{
+            $dsn = sprintf('%s:host=%s;dbname=%s;port=%d;charset=%s',$db_driver,$db_host,$db_name,$db_port,$db_charset);
+        }
 
+        static::$conn_pool[$default_name] = new ZPDO($dsn, $db_user, $db_passwd, $opt);
+        static::$conn_pool[$default_name]->setTablePrefix($db_prefix);
+        if($db_driver == 'mysql'){
+            $db_collation = empty($db_collation) ? '' : " collate {$db_collation} ";
+            static::$conn_pool[$default_name]->exec("set names {$db_charset} {$db_collation}");
         }
         return static::$conn_pool[$default_name];
     }
 
-    public static function getPDO(string $default_name = 'default')
+    /**
+     * @param  string  $default_name
+     *
+     * @return \zap\db\ZPDO
+     */
+    public static function getPDO($default_name = null)
     {
         return static::connect($default_name);
     }
 
-    public static function __callStatic($method, $args)
+    public static function prepare($statement, $options = [])
     {
-        return call_user_func_array(array(static::connect(static::$default_name), $method), $args);
+        $pdo = static::connect(static::$default_name);
+        return $pdo->prepare($pdo->prepareSQL($statement),$options);
     }
 
-    public function prepare($query, $options = [])
-    {
-        parent::prepare($query, $options); // TODO: Change the autogenerated stub
-    }
-
+    /**
+     * @param $statement
+     *
+     * @return false|int
+     */
     public static function exec($statement)
     {
-        $db = static::connect(static::$default_name);
-        echo $db->exec($db->prepare_table_prefix($statement));
+        $pdo = static::connect(static::$default_name);
+        return $pdo->exec($pdo->prepareSQL($statement));
     }
 
-    public function query($statement, $mode = PDO::ATTR_DEFAULT_FETCH_MODE, $arg3 = null)
+    /**
+     * @param $statement
+     * @param $params
+     *
+     * @return false|\zap\db\Statement
+     */
+    public static function query($statement,$params = [])
     {
-        parent::query($statement, $mode, $arg3); // TODO: Change the autogenerated stub
+        $stm = static::prepare($statement);
+        $stm->execute($params);
+        return $stm;
     }
 
-    public static function select($sql, $args = [])
+    public static function value($statement,$params = []){
+        $stm = static::prepare($statement);
+        $stm->execute($params);
+        return $stm->fetchColumn();
+    }
+
+    public static function __callStatic($name, $arguments)
     {
-        if (!$args)
-        {
-            return static::connect(static::$default_name)->query($sql);
-        }
-        $stmt = self::connect(static::$default_name)->prepare($sql);
-        $stmt->execute($args);
-        return $stmt;
-    }
-    public function update(string $table, $data, $where = null) {
-
+        return call_user_func_array([static::connect(static::$default_name),$name],$arguments);
     }
 
-    public function delete(string $table, $where)
-    {
-        $map = [];
-
-        return $this->exec('DELETE FROM ' . $this->tableQuote($table) . $this->whereClause($where, $map), $map);
+    public static function table($table,$alias = null){
+        $query = new Query(static::connect(static::$default_name));
+        return $query->from($table,$alias);
     }
-
-    public function get(string $table, $join = null, $columns = null, $where = null)
-    {
-        $map = [];
-        $result = [];
-        $columnMap = [];
-        $currentStack = [];
-
-        if ($where === null) {
-            if ($this->isJoin($join)) {
-                $where['LIMIT'] = 1;
-            } else {
-                $columns['LIMIT'] = 1;
-            }
-
-            $column = $join;
-        } else {
-            $column = $columns;
-            $where['LIMIT'] = 1;
-        }
-
-        $isSingle = (is_string($column) && $column !== '*');
-        $query = $this->exec($this->selectContext($table, $map, $join, $columns, $where), $map);
-
-        if (!$this->statement) {
-            return false;
-        }
-
-        // @codeCoverageIgnoreStart
-        $data = $query->fetchAll(PDO::FETCH_ASSOC);
-
-        if (isset($data[0])) {
-            if ($column === '*') {
-                return $data[0];
-            }
-
-            $this->columnMap($columns, $columnMap, true);
-            $this->dataMap($data[0], $columns, $columnMap, $currentStack, true, $result);
-
-            if ($isSingle) {
-                return $result[0][$columnMap[$column][0]];
-            }
-
-            return $result[0];
-        }
-    }
-
 
     /**
      * @param $callback \Closure
      *
      * @return bool 事务成功返回true
      */
-    public function transaction($callback){
+    public static function transaction($callback,$connection = null){
         try{
-            static::connect(static::$default_name)->beginTransaction();
+            static::connect($connection)->beginTransaction();
             if(is_callable($callback)){
                 $callback();
             }
-            static::connect(static::$default_name)->commit();
-            return true;
+            return static::connect($connection)->commit();
         }catch (PDOException $exception){
-            static::connect(static::$default_name)->rollBack();
+            static::connect($connection)->rollBack();
             return false;
         }
+    }
+
+    public static function connection($connection = null , $callback = null){
+
+        $default_name = static::$default_name;
+        static::$default_name = $connection;
+        if(is_callable($callback)){
+            $callback();
+        }
+        static::$default_name = $default_name;
     }
 
 

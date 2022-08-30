@@ -34,7 +34,7 @@ class Router
 
     private $requestMethod = 'GET';
 
-    private $serverBasePath;
+    public $baseUrl;
 
     public $currentRoute;
 
@@ -192,33 +192,25 @@ class Router
 
         $numHandled = 0;
 
-        // handle 404 pattern
         if (count($this->notFoundCallback) > 0)
         {
-            // loop fallback-routes
             foreach ($this->notFoundCallback as $route_pattern => $route_callable) {
 
-                // matches result
                 $matches = [];
 
-                // check if there is a match and get matches as $matches (pointer)
                 $is_match = $this->patternMatches($route_pattern, $this->getCurrentUri(), $matches, PREG_OFFSET_CAPTURE);
 
-                // is fallback route match?
                 if ($is_match) {
 
-                    // Rework matches to only contain the matches, not the orig string
                     $matches = array_slice($matches, 1);
 
-                    // Extract the matched URL parameters (and only the parameters)
                     $params = array_map(function ($match, $index) use ($matches) {
 
-                        // We have a following parameter: take the substring from the current param position until the next one's position (thank you PREG_OFFSET_CAPTURE)
                         if (isset($matches[$index + 1]) && isset($matches[$index + 1][0]) && is_array($matches[$index + 1][0])) {
                             if ($matches[$index + 1][0][1] > -1) {
                                 return trim(substr($match[0][0], 0, $matches[$index + 1][0][1] - $match[0][1]), '/');
                             }
-                        } // We have no following parameters: return the whole lot
+                        }
 
                         return isset($match[0][0]) && $match[0][1] != -1 ? trim($match[0][0], '/') : null;
                     }, $matches, array_keys($matches));
@@ -246,8 +238,11 @@ class Router
 
     private function handleMiddlewares($routes){
         foreach ($routes as $route) {
-
-            $is_match = preg_match('#^' . $route['pattern'] . '$#i', $this->currentUri);
+            $is_match = boolval(preg_match("#^" . $route['pattern'] . "#i", $this->currentUri));
+            if(!$is_match){
+                continue;
+            }
+            $is_match && $this->currentRoute = $route;
             if ($is_match && $this->invokeMiddleware($route['fn'],$route['options']) === false) {
                 if ($this->requestMethod == 'HEAD') {
                     ob_end_clean();
@@ -346,7 +341,7 @@ class Router
         }
         $middleware = $reflect->newInstanceArgs(['options'=>$options]);
         $middleware->router = $this;
-        $middleware->basePath = $this->getBasePath();
+        $middleware->baseUrl = $this->getbaseUrl();
         $middleware->currentUri = $this->getCurrentUri();
         app()->dispatcher = $middleware;
         return $middleware->handle();
@@ -354,8 +349,7 @@ class Router
 
     public function getCurrentUri()
     {
-        $uri = substr(rawurldecode($_SERVER['REQUEST_URI']), strlen($this->getBasePath()));
-
+        $uri = substr(rawurldecode($_SERVER['REQUEST_URI']), strlen($this->getbaseUrl()));
         if (strstr($uri, '?')) {
             $uri = substr($uri, 0, strpos($uri, '?'));
         }else if(strstr($uri, '#')){
@@ -365,17 +359,17 @@ class Router
     }
 
 
-    public function getBasePath()
+    public function getbaseUrl()
     {
-        if ($this->serverBasePath === null) {
-            $this->serverBasePath = implode('/', array_slice(explode('/', $_SERVER['SCRIPT_NAME']), 0, -1)) . '/';
+        if ($this->baseUrl === null) {
+            $this->baseUrl = implode('/', array_slice(explode('/', $_SERVER['SCRIPT_NAME']), 0, -1)) ;
         }
 
-        return $this->serverBasePath;
+        return $this->baseUrl;
     }
 
-    public function setBasePath($serverBasePath)
+    public function setbaseUrl($baseUrl)
     {
-        $this->serverBasePath = $serverBasePath;
+        $this->baseUrl = $baseUrl;
     }
 }

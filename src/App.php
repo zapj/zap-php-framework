@@ -2,20 +2,17 @@
 
 namespace zap;
 
-use zap\ErrorHandler;
 use ArrayObject;
-use zap\http\Request;
+use ReflectionClass;
 use zap\http\Router;
 use zap\util\Arr;
-use zap\http\Dispatcher;
-use ReflectionClass;
 
 define('ZAP_SRC', realpath(__DIR__));
 
-class App
+class App implements \ArrayAccess
 {
 
-    public const VERSION = '0.0.1';
+    public const VERSION = '1.0.1';
 
 
     protected $rootPath;
@@ -172,17 +169,13 @@ class App
         return isset(static::$container[$key]);
     }
 
+
+
     /**
      * @return \zap\http\Router
      */
     public function createRouter(){
-        $this->router = new Router();
-        //加载路由配置
-        $route_file = $this->configPath('/route.php');
-        if(is_file($route_file)){
-            require_once $route_file;
-        }
-        return $this->router;
+        return Router::create();
     }
 
     public function getLogger($name = 'app'){
@@ -211,5 +204,74 @@ class App
         }
 
         return $this->logger[$name];
+    }
+
+    /**
+     * Whether a offset exists
+     *
+     * @link https://php.net/manual/en/arrayaccess.offsetexists.php
+     *
+     * @param  mixed  $offset  <p>
+     *                         An offset to check for.
+     *                         </p>
+     *
+     * @return bool true on success or false on failure.
+     * </p>
+     * <p>
+     * The return value will be casted to boolean if non-boolean was returned.
+     */
+    public function offsetExists($offset)
+    {
+        return isset(static::$container[$offset]);
+    }
+
+    /**
+     * Offset to retrieve
+     *
+     * @link https://php.net/manual/en/arrayaccess.offsetget.php
+     *
+     * @param  mixed  $offset  <p>
+     *                         The offset to retrieve.
+     *                         </p>
+     *
+     * @return mixed Can return all value types.
+     */
+    public function offsetGet($offset)
+    {
+        return static::$container[$offset];
+    }
+
+    /**
+     * Offset to set
+     *
+     * @link https://php.net/manual/en/arrayaccess.offsetset.php
+     *
+     * @param  mixed  $offset  <p>
+     *                         The offset to assign the value to.
+     *                         </p>
+     * @param  mixed  $value   <p>
+     *                         The value to set.
+     *                         </p>
+     *
+     * @return void
+     */
+    public function offsetSet($offset, $value)
+    {
+        static::$container[$offset] = $value;
+    }
+
+    /**
+     * Offset to unset
+     *
+     * @link https://php.net/manual/en/arrayaccess.offsetunset.php
+     *
+     * @param  mixed  $offset  <p>
+     *                         The offset to unset.
+     *                         </p>
+     *
+     * @return void
+     */
+    public function offsetUnset($offset){
+        unset(static::$container[$offset]);
     }
 }
