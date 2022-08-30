@@ -19,6 +19,19 @@ class Arr {
         return $array;
     }
 
+    public static function find($array, $keys) {
+       if(is_string($keys)){
+           return isset($array[$keys]) ? $array[$keys] : [];
+       }
+       $items = [];
+       foreach ($keys as $key) {
+           if(isset($array[$key])){
+               $items[$key] = $array[$key];
+           }
+        }
+        return $items;
+    }
+
     public static function has($array, $key) {
         if (empty($array) || is_null($key)) {
             return false;

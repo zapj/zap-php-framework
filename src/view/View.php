@@ -96,6 +96,7 @@ class View {
     }
 
     public static function make($name = null,$data = []){
+        set_include_path(get_include_path() . PATH_SEPARATOR .  resource_path('/views'));
         return new View($name,$data);
     }
 

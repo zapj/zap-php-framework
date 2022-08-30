@@ -34,7 +34,7 @@ class Response {
      *
      * @return void
      */
-    public static function toJson($content = null, $statusCode = 200, $headers = []) {
+    public static function json($content = null, $statusCode = 200, $headers = []) {
         $json = json_encode($content);
         if ($json === false) {
             $json = json_encode(array("jsonError"=>json_last_error_msg(),"code"=>-1,"msg"=>"json parse error"));
@@ -65,6 +65,7 @@ class Response {
      */
     public function setContent($content) {
         $this->content = $content;
+        return $this;
     }
 
     /**
@@ -85,6 +86,7 @@ class Response {
 
     public function flash($message, $type = Session::INFO){
         Session::instance()->addFlash($message,$type);
+        return $this;
     }
 
     /**
@@ -92,12 +94,12 @@ class Response {
      * @param string $url
      * @throws \Exception
      */
-    public function redirect($url) {
-        if (\headers_sent()) {
-            throw new \Exception('tried to change http response code after sending headers!');
+    public static function redirect($url,$message = null,$type = Session::INFO) {
+        $response = Response::create()->setHeader('Location',$url);
+        if(!is_null($message)){
+            $response->flash($message,$type);
         }
-        $this->setHeader('Location', $url);
-        die;
+        $response->send();
     }
 
 }

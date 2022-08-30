@@ -1,6 +1,6 @@
 <?php
 
-namespace zap\util;
+namespace zap\helpers;
 
 class Pagination
 {
