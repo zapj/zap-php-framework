@@ -40,31 +40,29 @@ class Session
 
     public function info($message)
     {
-        return $this->addFlash($message, self::INFO);
+        return $this->add_flash($message, self::INFO);
     }
 
     public function success($message)
     {
-        return $this->addFlash($message, self::SUCCESS);
+        return $this->add_flash($message, self::SUCCESS);
     }
 
 
     public function warning($message)
     {
-        return $this->addFlash($message, self::WARNING);
+        return $this->add_flash($message, self::WARNING);
     }
 
 
     public function error($message)
     {
-        return $this->addFlash($message, self::ERROR);
+        return $this->add_flash($message, self::ERROR);
     }
 
 
-    public function addFlash($message, $type = self::defaultType)
+    public function add_flash($message, $type = self::defaultType)
     {
-        if (!isset($message[0]))
-            return false;
         if (!isset($_SESSION['flash_messages']))
             $_SESSION['flash_messages'][$type] = array();
         $_SESSION['flash_messages'][$type][] = $message;
@@ -153,9 +151,9 @@ class Session
      * @param array $types
      * @return $this
      */
-    public function clearFlash($types = [])
+    public function clearFlash($types = null)
     {
-        if ((is_array($types) && empty($types)) || is_null($types) || !$types) {
+        if (is_null($types)) {
             unset($_SESSION['flash_messages']);
         } elseif (!is_array($types)) {
             $types = [$types];

@@ -12,7 +12,7 @@ define('ZAP_SRC', realpath(__DIR__));
 class App implements \ArrayAccess
 {
 
-    public const VERSION = '1.0.1';
+    public const VERSION = '1.0.2';
 
 
     protected $rootPath;
@@ -273,5 +273,17 @@ class App implements \ArrayAccess
      */
     public function offsetUnset($offset){
         unset(static::$container[$offset]);
+    }
+
+    public function has($name){
+        return $this->offsetExists($name);
+    }
+
+    public function get($name){
+        return $this->offsetGet($name);
+    }
+
+    public function set($name,$value){
+        $this->offsetSet($name,$value);
     }
 }

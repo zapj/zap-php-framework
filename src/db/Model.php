@@ -21,7 +21,7 @@ abstract class Model implements \ArrayAccess
 
     protected $connection;
 
-    protected $fillable = null;
+    protected $columns = null;
 
     protected $columnAlias = [];
 
@@ -34,13 +34,17 @@ abstract class Model implements \ArrayAccess
         $this->init();
     }
 
-    protected function getAliasName(){
+    public function setColumnAlias($name,$orginName){
+        $this->columnAlias[$name] = $orginName;
+    }
+
+    protected function tableAliasName(){
         return $this->getTable();
     }
 
     public static function where($name,$operator = '=',$value = null){
         $model = new static;
-        $query = DB::table($model->getTable(),$model->getAliasName());
+        $query = DB::table($model->getTable(),$model->tableAliasName());
         $query->setFetchClass(get_called_class());
         return $query->where($name,$operator,$value);
     }
@@ -71,7 +75,7 @@ abstract class Model implements \ArrayAccess
         if (!is_null($this->table) || !empty($this->table)) {
             return $this->table;
         }
-        return $this->getClassName();
+        return static::getDefaultTableName();
     }
 
     /**
@@ -133,8 +137,8 @@ abstract class Model implements \ArrayAccess
     public function fill(array $attributes = array(),$keys = []) {
         if(!empty($keys)){
             $attributes = Arr::find($attributes,$keys);
-        }else if(is_array($this->fillable)){
-            $attributes = Arr::find($attributes,$this->fillable);
+        }else if(is_array($this->columns)){
+            $attributes = Arr::find($attributes,$this->columns);
         }
 
         foreach ($attributes as $key => $value) {
@@ -149,27 +153,28 @@ abstract class Model implements \ArrayAccess
             return false;
         }
         $pkey = $this->getPrimaryKey();
-        return $this->db()->delete($this->getTable(), $pkey . '=:' . $pkey, array(
-            $pkey => $id
-        ));
+        return $this->db()->delete($this->getTable(), [$pkey=>$id]);
     }
 
-    public static function find() {
+    public static function find($params = []) {
         $model = new static;
-        $query = DB::table($model->getTable(),$model->getAliasName());
+        $query = DB::table($model->getTable(),$model->tableAliasName());
         $query->setFetchClass(get_called_class());
+        foreach($params as $param){
+            call_user_func_array([$query,'where'],$param);
+        }
         return $query;
     }
 
     /**
      *
      * @param array|int $ids
-     * @return mixed
+     * @return static
      */
     public static function findById($ids) {
         $ids = is_array($ids) ? $ids : func_get_args();
         $model = new static;
-        $query = DB::table($model->getTable(),$model->getAliasName())->whereIn($model->getPrimaryKey(),$ids);
+        $query = DB::table($model->getTable(),$model->tableAliasName())->whereIn($model->getPrimaryKey(),$ids);
         $query->setFetchClass(get_called_class());
         if (func_num_args() == 1) {
             return $query->first();
@@ -179,7 +184,7 @@ abstract class Model implements \ArrayAccess
 
     public static function findAll($params = array(),$options = []) {
         $model = new static;
-        $query = DB::table($model->getTable(),$model->getAliasName());
+        $query = DB::table($model->getTable(),$model->tableAliasName());
         if (is_array($params) && !empty($params)) {
             foreach ($params as $key => $value) {
                 $query->where($key,$value);
@@ -331,14 +336,14 @@ abstract class Model implements \ArrayAccess
     public function getAttributes($keys = []) {
         if(!empty($keys)){
             return Arr::find($this->attributes,$keys);
-        }else if(is_array($this->fillable)){
-            return Arr::find($this->attributes,$this->fillable);
+        }else if(is_array($this->columns)){
+            return Arr::find($this->attributes,$this->columns);
         }
 
         return $this->attributes;
     }
 
-    public function collect($class,$keys = []){
+    public function export($class,$keys = []){
         $model = new $class($this->attributes,$keys);
         return $model;
     }
@@ -357,7 +362,7 @@ abstract class Model implements \ArrayAccess
 
     public function __call($name, $arguments)
     {
-        $query = DB::table($this->getTable(),$this->getAliasName());
+        $query = DB::table($this->getTable(),$this->tableAliasName());
         $query->setFetchClass(get_called_class());
         return call_user_func_array([$query,$name],$arguments);
     }
@@ -366,7 +371,7 @@ abstract class Model implements \ArrayAccess
     {
 
         $model = new static;
-        $query = DB::table($model->getTable(),$model->getAliasName());
+        $query = DB::table($model->getTable(),$model->tableAliasName());
         $query->setFetchClass(get_called_class());
         if(Str::startsWith($name,'findBy')){
             $columnName = preg_replace('/([A-Z])/', '_$1', str_ireplace('findBy','',$name));

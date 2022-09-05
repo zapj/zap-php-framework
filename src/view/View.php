@@ -3,6 +3,7 @@
 namespace zap\view;
 
 
+use zap\exception\ViewNotFoundException;
 use zap\util\Str;
 
 class View {
@@ -31,14 +32,15 @@ class View {
     public function __construct($name = null,$data = []){
         $this->params = $data;
         $this->viewName = $name;
-        $this->templatePaths[] = resource_path('/views');
+
         if(($theme = config('config.theme',false)) !== false){
-            $this->templatePaths[] = themes_path("/$theme");
-            $this->templatePaths[] = themes_path("/$theme");
+            array_unshift($this->templatePaths,themes_path("/$theme"));
+        }else{
+            array_unshift($this->templatePaths,resource_path('/views'));
         }
-        if(($theme_extend = config('config.theme_extend',false)) !== false){
-            $this->templatePaths[] = themes_path("/$theme_extend");
-            $this->templatePaths[] = themes_path("/$theme_extend");
+        if(config('config.set_theme_include_path',false) === false){
+            set_include_path(get_include_path() . PATH_SEPARATOR .  join(PATH_SEPARATOR,$this->templatePaths));
+            config_set('config.set_theme_include_path',true);
         }
         $this->prepare($name);
     }
@@ -96,7 +98,6 @@ class View {
     }
 
     public static function make($name = null,$data = []){
-        set_include_path(get_include_path() . PATH_SEPARATOR .  resource_path('/views'));
         return new View($name,$data);
     }
 
@@ -106,10 +107,9 @@ class View {
     }
 
     private function prepare($name){
-
         $this->viewFile = $this->resolveTemplate($name);
         if(is_null($this->viewFile)){
-            die('Template not found');
+            throw new ViewNotFoundException('Template file not found');
         }
         $this->initViewRenderer();
     }
@@ -147,8 +147,9 @@ class View {
     private function initViewRenderer(){
         if(Str::endsWith($this->viewFile,'.twig.php')){
             $this->engine = new TwigViewRenderer($this);
+        }else{
+            $this->engine = new PHPRenderer($this);
         }
-        $this->engine = new PHPRenderer($this);
     }
 
 }

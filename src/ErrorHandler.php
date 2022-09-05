@@ -34,7 +34,7 @@ class ErrorHandler
             }
             $html = $this->zapHighlightFile($error_file, $error_line, $errstr, 'PHP错误 Errno:' . $errno);
 
-            if(config('config.debug',false) == true){
+            if(config('config.debug',false) === true){
                 Log::emergency("Error (ErrNo {$errno}) : " . $errstr,['file'=>$error_file, 'line'=>$error_line]);
                 ZView::render(ZAP_SRC . "/resources/views/errors/error.php",['html' => $html,'handler'=>$this]);
             }else{
@@ -48,7 +48,7 @@ class ErrorHandler
         if (ob_get_length()) {
             ob_end_clean();
         }
-        if(config('config.debug',false) == true){
+        if(config('config.debug',false) === true){
             Log::emergency("Exception Type:" . get_class($exception),['message'=>$exception->getMessage(),'file'=>$exception->getFile(), 'line'=>$exception->getLine()]);
             ZView::render(ZAP_SRC . "/resources/views/errors/exception.php",['exception' => $exception,'handler'=>$this]);
         }else{

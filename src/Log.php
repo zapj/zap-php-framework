@@ -4,6 +4,15 @@ namespace zap;
 
 /**
  * Level Log::DEBUG|Log::INFO|Log::NOTICE|Log::WARNING|Log::ERROR|Log::CRITICAL|Log::ALERT|Log::EMERGENCY
+ *
+ * @method static info($message, array $context = [])
+ * @method static warning($message, array $context = [])
+ * @method static error($message, array $context = [])
+ * @method static debug($message, array $context = [])
+ * @method static alert($message, array $context = [])
+ * @method static emergency($message, array $context = [])
+ * @method static critical($message, array $context = [])
+ *
  */
 class Log
 {
@@ -25,38 +34,11 @@ class Log
     public const EMERGENCY = 600;
 
 
-    public static function info($message, array $context = []){
-        if(config('config.log',false)){
-            app()->getLogger()->info($message, $context);
-        }
-    }
-
-    public static function warning($message, array $context = []){
+    public static function __callStatic($name, $arguments)
+    {
         if(config('config.log',false)) {
-            app()->getLogger()->warning($message, $context);
+            call_user_func_array([app()->getLogger(), $name], $arguments);
         }
-    }
-
-    public static function error($message, array $context = []){
-        if(config('config.log',false)) {
-            app()->getLogger()->error($message, $context);
-        }
-    }
-
-    public static function debug($message, array $context = []){
-        app()->getLogger()->debug($message, $context);
-    }
-
-    public static function alert($message, array $context = []){
-        app()->getLogger()->alert($message, $context);
-    }
-
-    public static function emergency($message, array $context = []){
-        app()->getLogger()->emergency($message, $context);
-    }
-
-    public static function critical($message, array $context = []){
-        app()->getLogger()->critical($message, $context);
     }
 
 }

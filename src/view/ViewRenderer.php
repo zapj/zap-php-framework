@@ -22,6 +22,11 @@ abstract class ViewRenderer
         $this->view->layout($layout);
     }
 
+
+    public function include($name){
+        return $this->engine->_render($name,'_include');
+    }
+
     public function block($name) {
         return isset($this->view->blocks[$name]) ? $this->view->blocks[$name] : '';
     }
