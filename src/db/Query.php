@@ -54,6 +54,12 @@ class Query
         return $this;
     }
 
+    public function setFetchMode($fetchMode=null,$class=null){
+        $this->fetchMode = $fetchMode;
+        $this->fetchClass = $class;
+        return $this;
+    }
+
     /**
      * @param array|string $columns 列名
      *
@@ -367,7 +373,12 @@ class Query
         if(!is_null($this->fetchMode)){
             return $stm->fetchAll($this->fetchMode,$this->fetchClass);
         }
-        return $stm->fetchAll($fetchMode,$fetch_argument,$args);
+        if(is_int($fetch_argument)){
+            return $stm->fetchAll($fetchMode,$fetch_argument);
+        }else if(is_string($fetch_argument)){
+            return $stm->fetchAll($fetchMode,$fetch_argument,$args);
+        }
+        return $stm->fetchAll($fetchMode);
 
     }
 
@@ -379,7 +390,7 @@ class Query
             $stm->setFetchMode($this->fetchMode,$this->fetchClass);
             return $stm->fetch();
         }else if(!is_null($fetchClass)){
-            $stm->setFetchMode(\PDO::FETCH_CLASS,$fetchClass);
+            $stm->setFetchMode($fetchMode,$fetchClass);
             return $stm->fetch();
         }
         return $stm->fetch($fetchMode);
@@ -391,9 +402,11 @@ class Query
         $sql .= $this->prepareWhereString();
         $sql .= $this->prepareGroupByString();
         $sql .= $this->prepareHavingString();
-        $sql .= $this->prepareOrderByString();
+//        $sql .= $this->prepareOrderByString();
         $sql .= $this->prepareLimitString();
-        return $this->db->query($sql)->fetchColumn();
+        $stm = $this->db->prepare($sql);
+        $stm->execute($this->params);
+        return $stm->fetchColumn();
     }
 
     public function distinct() {

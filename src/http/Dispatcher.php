@@ -3,6 +3,8 @@
 namespace zap\http;
 
 
+use zap\exception\NotFoundException;
+
 class Dispatcher implements Middleware
 {
 
@@ -16,6 +18,8 @@ class Dispatcher implements Middleware
     public $router;
 
     public $controller;
+
+    private $controllerClass;
 
     public $method;
 
@@ -35,32 +39,35 @@ class Dispatcher implements Middleware
     {
         $this->parseUrlPath();
 
-        if ( ! class_exists($this->controller)) {
+        if ( ! class_exists($this->controllerClass)) {
             $this->router->trigger404();
+
             return false;
         }
 
         try {
-            app()->controller = new $this->controller();
+            app()->controller = new $this->controllerClass();
+            call_user_func_array([app()->controller, 'setParams'], ['params'=>$this->router->params]);
             if (method_exists(app()->controller, '_invoke')) {
                 call_user_func_array([app()->controller, '_invoke'],
-                    ['method' => $this->method, 'params' => $this->router->params]);
-            }else{
+                    ['method' => $this->method,
+                     'params' => $this->router->params]
+                );
+            } else {
                 if (method_exists(app()->controller, $this->method)) {
-                    call_user_func_array([app()->controller, $this->method], $this->router->params);
+                    call_user_func_array([app()->controller, $this->method],$this->router->params);
                 } else {
-                    throw new \Exception('not found');
+                    throw new NotFoundException('not found');
                 }
             }
-        } catch (\Exception $e) {
+        } catch (NotFoundException $e) {
             if (method_exists(app()->controller, '_notfound')) {
-                call_user_func_array([app()->controller, '_notfound'],
-                    ['method' => $this->method,
-                     'params' => $this->router->params]);
+                call_user_func_array([app()->controller, '_notfound'],['method' => $this->method,'params' => $this->router->params]);
             } else {
                 $this->router->trigger404();
             }
         }
+
         return false;
     }
 
@@ -71,23 +78,13 @@ class Dispatcher implements Middleware
         $url = trim(
             preg_replace("#$routeBase#iu", '', $this->currentUri, 1), '/ '
         );
-        $segments = preg_split(
-            '#/#', trim($url, '/'), -1, PREG_SPLIT_NO_EMPTY
-        );
+        $segments = preg_split('#/#', trim($url, '/'), -1, PREG_SPLIT_NO_EMPTY);
         $controller = array_shift($segments);
         $method = array_shift($segments);
-        if ($controller != null
-            && preg_match(
-                '/^[a-z]+[-_]{0,3}\w+$/i', $controller
-            )
-        ) {
+        if ($controller != null && preg_match('/^[a-z]+[-_]{0,3}\w+$/i', $controller)) {
             $this->controller = $controller;
-            if ($method != null
-                && preg_match(
-                    '/^[a-z]+[-_]{0,3}\w+$/i', $method
-                )
-            ) {
-                $this->method = $method;
+            if ($method != null && preg_match('/^[a-z][a-z-_]+$/i', $method)) {
+                $this->method = str_replace('-','',$method);
             } elseif ($method != null) {
                 array_unshift($segments, $method);
             }
@@ -98,10 +95,10 @@ class Dispatcher implements Middleware
         $this->hasParams = (count($segments) == 0) ? false : true;
 
         $this->router->params = $segments;
-        $this->controller = $namespace.'\\'.str_replace(
+        $this->controllerClass = $namespace.'\\'.str_replace(
                 ' ', '',
                 ucwords(str_replace(['-', '_'], ' ', $this->controller))
-            );
+            ) . 'Controller';
     }
 
 

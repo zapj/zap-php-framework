@@ -35,7 +35,7 @@ class Pagination
         return ceil(($this->page - 1) * $this->limit);
     }
 
-    public function render($linkNum = 7, $list_class = 'pagination pagination-sm',$li_class = '' ,$a_class = '') {
+    public function render($linkNum = 7, $list_class = 'pagination  justify-content-center',$li_class = 'page-item' ,$a_class = 'page-link') {
         if ($this->limit == 'all' || $this->limit == 0) {
             return '';
         }
@@ -45,7 +45,7 @@ class Pagination
         $start = ( ( $this->page - $linkNum ) > 0 ) ? $this->page - $linkNum : 1;
         $end = ( ( $this->page + $linkNum ) < $last ) ? $this->page + $linkNum : $last;
 
-        $html = '<ul class="' . $list_class . '">';
+        $html = '<nav aria-label="Page navigation"><ul class="' . $list_class . '">';
 
         if ($this->page == 1) {
             $class = 'disabled';
@@ -71,7 +71,7 @@ class Pagination
             $html .= '<li class="' . $li_class .' disabled"><a class="'.$a_class.'" href="javascript:void(0);">&raquo;</a></li>';
         }
 
-        $html .= '</ul>';
+        $html .= '</ul></nav>';
 
         return $html;
     }

@@ -6,17 +6,6 @@ use PDO;
 use PDOException;
 use zap\util\Random;
 
-define('FETCH_LAZY',PDO::FETCH_LAZY);
-define('FETCH_ASSOC',PDO::FETCH_ASSOC);
-define('FETCH_NUM',PDO::FETCH_NUM);
-define('FETCH_BOTH',PDO::FETCH_BOTH);
-define('FETCH_OBJ',PDO::FETCH_OBJ);
-define('FETCH_BOUND',PDO::FETCH_BOUND);
-define('FETCH_COLUMN',PDO::FETCH_COLUMN);
-define('FETCH_CLASS',PDO::FETCH_CLASS);
-define('FETCH_INTO',PDO::FETCH_INTO);
-define('FETCH_FUNC',PDO::FETCH_FUNC);
-define('FETCH_KEY_PAIR',PDO::FETCH_KEY_PAIR);
 
 class ZPDO extends PDO
 {
@@ -125,7 +114,7 @@ class ZPDO extends PDO
         $values = [];
         for($i = 0;$i<count($array);$i++){
             $params[$i] = ":{$name}{$i}";
-            $values[$i] = $array[$i];
+            $values[$params[$i]] = $array[$i];
         }
         return [join(',',$params),$values];
     }

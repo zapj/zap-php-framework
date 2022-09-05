@@ -3,6 +3,23 @@
 
 use zap\util\Str;
 
+define('Z_DAY',86400);
+define('Z_HOUR',3600);
+
+define('Z_DATE_TIME','Y-m-d H:i:s');
+define('Z_DATE','Y-m-d');
+define('Z_TIME','H:i:s');
+
+define('FLASH_INFO','info');
+define('FLASH_WARNING','warning');
+define('FLASH_ERROR','error');
+define('FLASH_SUCCESS','success');
+
+define('ASSETS_HEAD','assets_head_urls');
+define('ASSETS_HEAD_TEXT','assets_head_text');
+define('ASSETS_BODY','assets_body_urls');
+define('ASSETS_BODY_TEXT','assets_body_text');
+
 function app(){
     return \zap\App::instance();
 }
@@ -82,7 +99,10 @@ function object_get($object, $key, $default = null) {
     return $object;
 }
 
-function arr_get(&$array, $key, $default = null) {
+function arr_get(&$array, $key, $default = null,$type = null) {
+    if($type){
+        return $type(\zap\util\Arr::get($array,$key,$default));
+    }
     return \zap\util\Arr::get($array,$key,$default);
 }
 
@@ -252,3 +272,131 @@ function url_to($url, $params = null, $queryString = true) {
     return base_url($url);
 }
 
+function register_scripts($urls, $position = ASSETS_HEAD) {
+    $position = 'scripts_' . $position;
+    if (!app()->$position) {
+        app()->$position = new ArrayObject([],ArrayObject::ARRAY_AS_PROPS);
+    }
+    if(is_array($urls)){
+        foreach ($urls as $url){
+            app()->$position[] = $url;
+        }
+    }else{
+        app()->$position[] = $urls;
+    }
+
+
+
+}
+
+function register_styles($urls, $position = ASSETS_HEAD) {
+    $position = 'styles_' . $position;
+    if (!app()->$position) {
+        app()->$position = new ArrayObject([],ArrayObject::ARRAY_AS_PROPS);
+    }
+    if(is_array($urls)){
+        foreach ($urls as $url){
+            app()->$position[] = $url;
+        }
+    }else{
+        app()->$position[] = $urls;
+    }
+}
+
+function print_scripts($position = ASSETS_HEAD) {
+    $key = 'scripts_' . $position;
+    if (!app()->has($key)) {
+        return false;
+    }
+    if ($position == ASSETS_HEAD) {
+        foreach (app()->$key as $script) {
+            echo '<script src="', $script, '"></script>', "\n";
+        }
+    } else if ($position == ASSETS_HEAD_TEXT) {
+        //body
+        echo '<script type="text/javascript">', "\n";
+        echo '//<![CDATA[', "\n";
+        foreach (app()->$key as $script) {
+            echo $script, "\n";
+        }
+        echo '//]]>', "\n";
+        echo '</script>', "\n";
+    } else if ($position == ASSETS_BODY) {
+        foreach (app()->$key as $script) {
+            echo '<script src="', $script, '"></script>', "\n";
+        }
+    } else if ($position == ASSETS_BODY_TEXT) {
+        echo '<script type="text/javascript">', "\n";
+        echo '//<![CDATA[', "\n";
+        foreach (app()->$key as $script) {
+            echo $script, "\n";
+        }
+        echo '//]]>', "\n";
+        echo '</script>', "\n";
+    }
+}
+
+function print_styles() {
+    $pos = 'styles_' . ASSETS_HEAD_TEXT;
+
+    if (app()->has('styles_' . ASSETS_HEAD)) {
+        foreach (app()->get('styles_' . ASSETS_HEAD) as $style) {
+            echo '<link rel="stylesheet" href="', $style, '">',"\n";
+        }
+    }
+    if (app()->has('styles_' . ASSETS_HEAD_TEXT)) {
+        //body
+
+        echo '<style>', "\n";
+        foreach (app()->get('styles_' . ASSETS_HEAD_TEXT) as $style) {
+            echo $style, "\n";
+        }
+        echo '</style>', "\n";
+    }
+}
+
+
+function session() {
+    return \zap\http\Session::instance();
+}
+
+function set_session($name, $value) {
+    \zap\http\Session::instance()->set($name, $value);
+}
+
+function get_session($name, $default = null) {
+    return \zap\http\Session::instance()->get($name, $default);
+}
+
+function has_session($name) {
+    return \zap\http\Session::instance()->has($name);
+}
+
+function remove_session($name) {
+    \zap\http\Session::instance()->remove($name);
+}
+
+function add_flash($message,$type = FLASH_INFO){
+    return \zap\http\Session::instance()->add_flash($message,$type);
+}
+
+/**
+ * @param $type
+ * @param $first true|false true 返回第一个消息
+ *
+ * @return array|false|mixed
+ */
+function get_flash($type = null,$first = false){
+    if(!is_null($type) && $first){
+        return current(\zap\http\Session::instance()->getFlash($type));
+    }
+    return \zap\http\Session::instance()->getFlash($type);
+}
+
+function has_flash($type = null){
+    return \zap\http\Session::instance()->hasFlash($type);
+}
+
+function clear_flash($type = null){
+    return \zap\http\Session::instance()->clearFlash($type);
+}

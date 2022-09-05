@@ -7,6 +7,7 @@ namespace zap\facades;
  * @method static home()
  * @method static current()
  * @method static action($controller,$queryParams = null,$pathParams = null)
+ * @method static active($action,$output = null)
  */
 class Url extends Facade
 {

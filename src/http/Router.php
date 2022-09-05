@@ -67,31 +67,28 @@ class Router
     }
 
 
-    public function filter($methods, $pattern, $fn, $options = [])
+    public function filter($pattern, $fn, $options = [])
     {
         $pattern = $this->baseRoute . '/' . trim($pattern, '/');
         $pattern = $this->baseRoute ? rtrim($pattern, '/') : $pattern;
 
-        foreach (explode('|', $methods) as $method) {
-            $this->middlewares[$method][] = array(
-                'pattern' => $pattern,
-                'fn' => $fn,
-                'options' => $options
-            );
-        }
+        $this->middlewares[] = array(
+            'pattern' => $pattern,
+            'fn' => $fn,
+            'options' => $options
+        );
+        return $this;
     }
 
     public function prefix($pattern, $fn, $options = [])
     {
         $pattern = $this->baseRoute . '/' . trim($pattern, '/');
         $pattern = $this->baseRoute ? rtrim($pattern, '/') : $pattern;
-        foreach (explode('|', $this->defaultMethods) as $method) {
-            $this->middlewares[$method][] = array(
-                'pattern' => $pattern,
-                'fn' => $fn,
-                'options' => $options
-            );
-        }
+        $this->middlewares[] = array(
+            'pattern' => $pattern,
+            'fn' => $fn,
+            'options' => $options
+        );
     }
     
     public function match($methods, $pattern, $fn)
@@ -109,7 +106,7 @@ class Router
 
     public function any($pattern, $action)
     {
-        $this->match('GET|POST|PUT|DELETE|OPTIONS|PATCH|HEAD', $pattern, $action);
+        $this->match($this->defaultMethods, $pattern, $action);
     }
 
     public function get($pattern, $action)
@@ -156,10 +153,7 @@ class Router
 
     public function dispatch()
     {
-        // middlewares
-        if (isset($this->middlewares[$this->requestMethod])
-            && $this->handleMiddlewares($this->middlewares[$this->requestMethod]) === FALSE
-        ) {
+        if ($this->handleMiddlewares($this->middlewares) === FALSE) {
             return true;
         }
 
@@ -368,7 +362,7 @@ class Router
         return $this->baseUrl;
     }
 
-    public function setbaseUrl($baseUrl)
+    public function setBaseUrl($baseUrl)
     {
         $this->baseUrl = $baseUrl;
     }

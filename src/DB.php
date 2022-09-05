@@ -4,12 +4,10 @@ namespace zap;
 
 use PDO;
 use PDOException;
-use PDOStatement;
+use zap\db\Expr;
 use zap\db\Query;
-use zap\traits\SingletonTrait;
-use zap\util\Arr;
 use zap\db\ZPDO;
-
+use zap\util\Arr;
 
 class DB
 {
@@ -84,6 +82,12 @@ class DB
         return static::connect($default_name);
     }
 
+    public static function quote($value)
+    {
+        $pdo = static::connect(static::$default_name);
+        return $pdo->quote($value);
+    }
+
     public static function prepare($statement, $options = [])
     {
         $pdo = static::connect(static::$default_name);
@@ -118,6 +122,20 @@ class DB
         $stm = static::prepare($statement);
         $stm->execute($params);
         return $stm->fetchColumn();
+    }
+
+    public static function getAll($statement,$params = [])
+    {
+        $stm = static::prepare($statement);
+        $stm->execute($params);
+        return $stm->fetchAll();
+    }
+
+    public static function getOne($statement,$params = [])
+    {
+        $stm = static::prepare($statement);
+        $stm->execute($params);
+        return $stm->fetch();
     }
 
     public static function __callStatic($name, $arguments)
@@ -156,6 +174,10 @@ class DB
             $callback();
         }
         static::$default_name = $default_name;
+    }
+
+    public static function expr($value){
+        return Expr::make($value);
     }
 
 
