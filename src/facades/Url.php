@@ -19,7 +19,7 @@ class Url extends Facade
     {
         $app = app();
         if(!isset($app[static::NAME])){
-            $app[static::NAME] = new \zap\util\Url();
+            $app[static::NAME] = new \zap\helpers\UrlHelper();
         }
 
         return $app[static::NAME];

@@ -20,6 +20,21 @@ define('ASSETS_HEAD_TEXT','assets_head_text');
 define('ASSETS_BODY','assets_body_urls');
 define('ASSETS_BODY_TEXT','assets_body_text');
 
+
+define('FETCH_LAZY',1);
+define('FETCH_ASSOC',2);
+define('FETCH_NUM',3);
+define('FETCH_BOTH',4);
+define('FETCH_OBJ',5);
+define('FETCH_BOUND',6);
+define('FETCH_COLUMN',7);
+define('FETCH_CLASS',8);
+define('FETCH_INTO',9);
+define('FETCH_FUNC',10);
+define('FETCH_GROUP',65536);
+define('FETCH_UNIQUE',196608);
+define('FETCH_KEY_PAIR',12);
+
 function app(){
     return \zap\App::instance();
 }
