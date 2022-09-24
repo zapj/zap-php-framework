@@ -17,7 +17,12 @@ class Image
 
     private $mimeType;
 
+
+    private $dirName;
+    private $baseName;
     private $extName;
+    private $fileName;
+
 
     /**
      * Image constructor.
@@ -27,12 +32,16 @@ class Image
     public function __construct($file)
     {
         if ( ! extension_loaded('gd')) {
-            exit('Error: PHP GD is not installed!');
+            throw new \Exception('Error: PHP GD is not installed!');
         }
 
         if (file_exists($file)) {
             $this->file    = $file;
-            $this->extName = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+            $pathParts = pathinfo($file);
+            $this->dirName = $pathParts['dirname'];
+            $this->baseName = $pathParts['basename'];
+            $this->extName = $pathParts['extension'] ? strtolower($pathParts['extension']) : '';
+            $this->fileName = $pathParts['filename'];
             $info          = getimagesize($file);
 
             $this->width    = $info[0];
@@ -48,7 +57,7 @@ class Image
                 $this->image = imagecreatefromjpeg($file);
             }
         } else {
-            exit('Error: Could not load image '.$file.'!');
+            throw new \Exception('Error: Could not load image '.$file.'!');
         }
     }
 
@@ -57,7 +66,7 @@ class Image
      *
      * @return Image
      */
-    public static function make($path)
+    public static function from($path)
     {
         return new Image($path);
     }
@@ -66,10 +75,10 @@ class Image
     {
         ob_start();
         imagepng($this->image);
-        $imagevariable = ob_get_contents();
+        $imageContent = ob_get_contents();
         ob_end_clean();
 
-        return $imagevariable;
+        return $imageContent;
     }
 
     public function toBase64()
@@ -215,20 +224,41 @@ class Image
      *
      * @param  string  $file
      * @param  int     $quality
+     * @return bool    $ret
      */
     public function save($file, $quality = 90)
     {
+        $ret = false;
         if (is_resource($this->image)) {
             if ($this->extName == 'jpeg' || $this->extName == 'jpg') {
-                imagejpeg($this->image, $file, $quality);
+                $ret = imagejpeg($this->image, $file, $quality);
             } elseif ($this->extName == 'png') {
-                imagepng($this->image, $file);
+                $ret = imagepng($this->image, $file);
             } elseif ($this->extName == 'gif') {
-                imagegif($this->image, $file);
+                $ret = imagegif($this->image, $file);
             }
 
             imagedestroy($this->image);
         }
+        return $ret;
+    }
+
+    public function savePath($path , $quality = 90){
+        if(!is_dir($path) && mkdir($path,0755,true) === false){
+            throw new \Exception('No permission to create directory , '.$path);
+        }
+
+        $file = $path  . '/' . $this->fileName . '.' . $this->extName;
+
+        return $this->save($file,$quality);
+    }
+
+    public function saveFile($file, $quality = 90){
+        $dir = dirname($file);
+        if(!is_dir($dir) && mkdir($dir,0755,true) === false){
+            throw new \Exception('No permission to create directory , '.$dir);
+        }
+        return $this->save($file,$quality);
     }
 
 
@@ -289,7 +319,7 @@ class Image
     /**
      *
      *
-     * @param  string  $watermark
+     * @param  \zap\image\Image  $watermark
      * @param  string  $position
      */
     public function watermark($watermark, $position = 'bottomright')

@@ -9,6 +9,28 @@ use zap\db\Query;
 use zap\db\ZPDO;
 use zap\util\Arr;
 
+/**
+ * @method static upsert($table, $data, $duplicate = null )
+ * @method static insert($table, $data)
+ * @method static replace($table, $data)
+ * @method static update($table, $data, $conditions = '', $params = array())
+ * @method static delete($table, $conditions = '', $params = array())
+ * @method static count($table, $conditions = '', $params = array())
+ * @method static keyPair($table, $columns, $conditions = '', $params = array())
+ * @method static rowCount()
+ * @method static toSnakeCase($name)
+ * @method static prepareSQL($sql)
+ * @method static quoteColumn($columnName)
+ * @method static quoteTable($table)
+ * @method static setFetchMode($mode)
+ * @method static setAutoCommit($value)
+ * @method static getAutoCommit()
+ * @method static buildParams($array,$name)
+ * @method static statement($statement, $params = [])
+ * @method static renameTable($oldName, $newName)
+ * @method static dropTable($table)
+ * @method static truncateTable($table)
+ */
 class DB
 {
 
@@ -85,6 +107,11 @@ class DB
     public static function quote($value)
     {
         $pdo = static::connect(static::$default_name);
+        if(is_array($value)){
+            return array_map(function($value) use ($pdo){
+                return $pdo->quote($value);
+                },$value);
+        }
         return $pdo->quote($value);
     }
 
@@ -118,7 +145,7 @@ class DB
         return $stm;
     }
 
-    public static function value($statement,$params = []){
+    public static function scalar($statement,$params = []){
         $stm = static::prepare($statement);
         $stm->execute($params);
         return $stm->fetchColumn();
@@ -176,8 +203,26 @@ class DB
         static::$default_name = $default_name;
     }
 
-    public static function expr($value){
+    public static function raw($value){
         return Expr::make($value);
+    }
+
+    public static function beginTransaction($connection = null)
+    {
+        $pdo = static::connect($connection);
+        return $pdo->beginTransaction();
+    }
+
+    public static function commit($connection = null)
+    {
+        $pdo = static::connect($connection);
+        return $pdo->commit();
+    }
+
+    public static function rollback($connection = null)
+    {
+        $pdo = static::connect($connection);
+        return $pdo->rollBack();
     }
 
 

@@ -81,9 +81,10 @@ class Dispatcher implements Middleware
         $segments = preg_split('#/#', trim($url, '/'), -1, PREG_SPLIT_NO_EMPTY);
         $controller = array_shift($segments);
         $method = array_shift($segments);
-        if ($controller != null && preg_match('/^[a-z]+[-_]{0,3}\w+$/i', $controller)) {
+
+        if ($controller != null && preg_match('/^[a-z]+[-_0-9a-z]+$/i', $controller)) {
             $this->controller = $controller;
-            if ($method != null && preg_match('/^[a-z][a-z-_]+$/i', $method)) {
+            if ($method != null && preg_match('/^[a-z][a-z0-9-_]+$/i', $method)) {
                 $this->method = str_replace('-','',$method);
             } elseif ($method != null) {
                 array_unshift($segments, $method);

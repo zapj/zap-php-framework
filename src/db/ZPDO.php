@@ -4,6 +4,7 @@ namespace zap\db;
 
 use PDO;
 use PDOException;
+use zap\exception\NotSupportedException;
 use zap\util\Random;
 
 
@@ -167,6 +168,58 @@ class ZPDO extends PDO
         return $this->lastInsertId();
     }
 
+    public function upsert($table, $data, $duplicate = null ,$primaryKeys = null ) {
+        $params = array();
+        $names = array();
+        $placeholders = array();
+
+        foreach ($data as $name => $value) {
+            $name = $this->quoteColumn($name);
+            $names[] = $name;
+            if ($value instanceof Expr) {
+                $placeholders[] = $value->raw;
+            } else {
+                $bindName = Random::rand(Random::ALPHA);
+                $placeholders[] = ':' . $bindName;
+                $params[$bindName] = $value;
+            }
+        }
+        if($duplicate){
+            $dupSet = [];
+            foreach ($duplicate as $name => $value) {
+                if ($value instanceof Expr) {
+                    $dupSet[] = $this->quoteColumn($name) . '=' . $value->raw;
+                } else {
+                    $dupSet[] = $this->quoteColumn($name) . '=:' . $name;
+                    $params[$name] = $value;
+                }
+            }
+        }
+
+
+        $sql = 'INSERT INTO ' . $this->quoteTable($table)
+            . ' (' . implode(', ', $names) . ') VALUES ('
+            . implode(', ', $placeholders) . ')';
+
+        if(!empty($duplicate) && $this->driver == 'mysql'){
+            $sql .= ' ON DUPLICATE KEY UPDATE '.join(',',$dupSet);
+        }else if(!empty($duplicate) && $this->driver == 'pssql'){
+            if(is_null($primaryKeys)){
+                reset($data);
+                $primaryKeys = key($data);
+            }else if(is_array($primaryKeys)){
+                $primaryKeys = join(',',$primaryKeys);
+            }
+            $sql .= ' ON CONFLICT ('.$primaryKeys.') DO UPDATE SET '.join(',',$dupSet);
+        }else{
+            throw new NotSupportedException('This method only supports mysql');
+        }
+        $statement = $this->prepare($sql);
+        $statement->execute($params);
+        $this->rowCount = $this->lastInsertId();
+        return $this->lastInsertId();
+    }
+
     /**
      * Db replace
      * @param string $table 表名
@@ -324,6 +377,11 @@ class ZPDO extends PDO
 
     public function rowCount(){
         return $this->rowCount;
+    }
+
+    public function toSnakeCase($name){
+        $name = preg_replace('/([A-Z])/', '_$1', $name);
+        return strtolower(trim($name,'_'));
     }
 
 

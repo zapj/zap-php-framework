@@ -91,5 +91,33 @@ class RedisCache implements CacheInterface
         return (bool)$this->get($key);
     }
 
+    public function increment($key, $initValue = null){
+        $value = $this->get($key);
+        if(is_null($value)){
+            $value = $initValue ?? 0;
+        }else{
+            $value = $initValue ? $value+$initValue : $value+1;
+        }
+        $this->set($key,$value);
+        return $value;
+    }
+
+    public function decrement($key, $initValue = null){
+        $value = $this->get($key);
+        if(is_null($value)){
+            $value = $initValue ?? 0;
+        }else{
+            $value = $initValue ? $value-$initValue : $value-1;
+        }
+        $this->set($key,$value);
+        return $value;
+    }
+
+    public function pull($key,$default = null){
+        $value = $this->get($key,$default);
+        $this->delete($key);
+        return $value;
+    }
+
 
 }

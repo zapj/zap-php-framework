@@ -9,73 +9,77 @@ use zap\util\Str;
 
 use function app;
 
-abstract class Model implements \ArrayAccess
+
+/**
+ * @method static \zap\db\Query select($columns = '*')
+ */
+abstract class AbstractModel implements \ArrayAccess
 {
     protected $primaryKey = 'id';
+
+    protected $autoincrement = true;
 
     protected $table;
 
     protected $attributes = array();
 
-    public $isNewRecord = false;
-
     protected $connection;
-
-    protected $columns = null;
-
-    protected $columnAlias = [];
 
     /**
      * Table Attributes
      * @param array $attributes
      */
-    public function __construct(array $attributes = array(),$keys = []) {
-        $this->fill($attributes,$keys);
+    public function __construct(array $attributes = array(),$filterKeys = []) {
+        $this->table = $this->table ?? static::getDefaultTableName();
+        $this->fill($attributes,$filterKeys);
         $this->init();
     }
 
-    public function setColumnAlias($name,$orginName){
-        $this->columnAlias[$name] = $orginName;
-    }
-
-    protected function tableAliasName(){
-        return $this->getTable();
-    }
-
     public static function where($name,$operator = '=',$value = null){
-        $model = new static;
-        $query = DB::table($model->getTable(),$model->tableAliasName());
-        $query->setFetchClass(get_called_class());
+        $query = DB::table(static::tableName());
+        $query->asObject(get_called_class());
         return $query->where($name,$operator,$value);
     }
 
+    public static function table($table,$alias = null){
+        $query = DB::table($table,$alias);
+        $query->asObject(get_called_class());
+        return $query;
+    }
+
     public function db($connection = null) {
-        return DB::connect(is_null($connection) ? $this->connection : $connection);
+        return DB::connect($this->connection ?? $connection);
     }
 
     public function init() {
 
     }
 
-    /**
-     * Set New Record
-     * @param boolean $flag
-     * @return \zap\db\Model
-     */
-    public function setNewRecord($flag) {
-        $this->isNewRecord = $flag;
-        return $this;
+    public function getById($id , $fetchMode = null) {
+        $primaryKey = $this->getPrimaryKey();
+        $query = $this->asObject(get_called_class());
+        if(is_array($primaryKey)){
+            //多主键
+            foreach($primaryKey as $key=>$value){
+                $query->where($key,$value);
+            }
+            return $query->first($fetchMode);
+        }
+        $query->where($primaryKey,$id);
+        return $query->first($fetchMode);
+
     }
+
 
     /**
      * Get TableName or Class Basename
      * @return string Table Name
      */
     public function getTable() {
-        if (!is_null($this->table) || !empty($this->table)) {
-            return $this->table;
+        if (empty($this->table)) {
+            $this->table = static::getDefaultTableName();
         }
-        return static::getDefaultTableName();
+        return $this->table;
     }
 
     /**
@@ -88,8 +92,10 @@ abstract class Model implements \ArrayAccess
 
     /**
      * Set PrimaryKey
+     *
      * @param string $key
-     * @return \zap\db\Model
+     *
+     * @return \zap\db\AbstractModel
      */
     public function setPrimaryKey($key) {
         $this->primaryKey = $key;
@@ -108,10 +114,12 @@ abstract class Model implements \ArrayAccess
     }
 
     public function save() {
-        if ($this->isNewRecord) {
+        if (empty($this->getId())) {
             $this->db()->insert($this->getTable(), $this->getAttributes());
-            $this->setNewRecord(false);
-            $this->setAttribute($this->getPrimaryKey(), $this->db()->lastInsertId());
+            if($this->autoincrement){
+                $this->setAttribute($this->getPrimaryKey(), $this->db()->lastInsertId());
+            }
+
         } else {
             $query = DB::table($this->getTable())->set($this->getAttributes());
 
@@ -131,14 +139,14 @@ abstract class Model implements \ArrayAccess
 
     /**
      * fill attributes
+     *
      * @param array $attributes
-     * @return \zap\db\Model
+     *
+     * @return \zap\db\AbstractModel
      */
-    public function fill(array $attributes = array(),$keys = []) {
-        if(!empty($keys)){
-            $attributes = Arr::find($attributes,$keys);
-        }else if(is_array($this->columns)){
-            $attributes = Arr::find($attributes,$this->columns);
+    public function fill(array $attributes = array(), $filterKeys = []) {
+        if(!empty($filterKeys)){
+            $attributes = Arr::find($attributes,$filterKeys);
         }
 
         foreach ($attributes as $key => $value) {
@@ -153,15 +161,43 @@ abstract class Model implements \ArrayAccess
             return false;
         }
         $pkey = $this->getPrimaryKey();
+        if(is_array($id)){
+            return $this->db()->delete($this->getTable(), $id);
+        }
         return $this->db()->delete($this->getTable(), [$pkey=>$id]);
     }
 
+    public function insert($data) {
+        return DB::insert(static::getDefaultTableName(), $data);
+    }
+
+    public function batchInsert($rows) {
+        $result = [];
+        foreach($rows as $data){
+            $result[] = DB::insert(static::tableName(), $data);
+        }
+        return $result;
+    }
+
+    /**
+     * @param $params
+     *
+     * @return \zap\db\Query
+     */
     public static function find($params = []) {
-        $model = new static;
-        $query = DB::table($model->getTable(),$model->tableAliasName());
-        $query->setFetchClass(get_called_class());
-        foreach($params as $param){
-            call_user_func_array([$query,'where'],$param);
+        $query = DB::table(static::tableName());
+        $query->asObject(get_called_class());
+        foreach($params as $name=>$value){
+            $query->where($name,$value);
+        }
+        return $query;
+    }
+
+    public static function createQuery($params = []) {
+        $query = DB::table(static::tableName());
+        $query->asObject(get_called_class());
+        foreach($params as $name=>$value){
+            $query->where($name,$value);
         }
         return $query;
     }
@@ -169,67 +205,116 @@ abstract class Model implements \ArrayAccess
     /**
      *
      * @param array|int $ids
-     * @return static
+     *
+     * @return static|array|false|\zap\db\AbstractModel
      */
-    public static function findById($ids) {
-        $ids = is_array($ids) ? $ids : func_get_args();
+    public static function findById($ids,$fetchMode = null) {
         $model = new static;
-        $query = DB::table($model->getTable(),$model->tableAliasName())->whereIn($model->getPrimaryKey(),$ids);
-        $query->setFetchClass(get_called_class());
-        if (func_num_args() == 1) {
-            return $query->first();
+
+        if(is_array($ids)){
+            $query = $model->whereIn($model->getPrimaryKey(),$ids);
+        }else{
+            $query = $model->where($model->getPrimaryKey(),$ids);
         }
-        return $query->get();
+
+        if($fetchMode === null){
+            $query->asObject(get_called_class());
+        }
+        if (is_numeric($ids)) {
+            return $query->first($fetchMode);
+        }
+        return $query->get($fetchMode);
     }
 
-    public static function findAll($params = array(),$options = []) {
+    public static function findOne($ids,$fetchMode = null) {
         $model = new static;
-        $query = DB::table($model->getTable(),$model->tableAliasName());
-        if (is_array($params) && !empty($params)) {
-            foreach ($params as $key => $value) {
-                $query->where($key,$value);
-            }
+        $query = $model->where($model->getPrimaryKey(),$ids);
+        if($fetchMode === null){
+            $query->asObject(get_called_class());
         }
+        return $query->first($fetchMode);
+    }
+
+    public static function findAll($params = array(),$options = [] , $fetchMode = null) {
+        $query = static::find($params);
         if(isset($options['orderBy'])){
             $query->orderBy($options['orderBy']);
         }
         if(isset($options['groupBy'])){
             $query->groupBy($options['groupBy']);
         }
-
         if(isset($options['limit'])){
             is_string($options['limit']) && $query->limit($options['limit']);
             is_array($options['limit']) && $query->limit($options['limit'][0],$options['limit'][1]);
         }
-        return $query->get();
+        return $query->get($fetchMode);
+    }
+
+    public static function updateAll($params = array(),$condition = []) {
+        $query = static::createQuery();
+        foreach ($condition as $key=>$where){
+            if(is_int($key)){
+                $query->where(...$where);
+            }else{
+                $query->where($key,$where);
+            }
+        }
+        $query->set($params);
+        return $query->update();
     }
 
     /**
      *
-     * @param int|array $ids
+     * @param int|array $statement
      * @return int
      */
-    public static function delete($ids) {
-        $ids = is_array($ids) ? $ids : func_get_args();
+    public static function delete($statement) {
         $model = new static;
         $query = DB::table($model->getTable());
-        $primaryKey = $model->getPrimaryKey();
-        if(is_string($primaryKey)){
-            return $query->where($primaryKey, $ids)->delete();
+        if(is_array($statement) && Arr::isAssoc($statement)){
+            foreach ($statement as $key=>$value){
+                $query->where($key, $value);
+            }
+        } else if(is_array($statement)){
+            $query->whereIn($model->getPrimaryKey(), $statement);
+            return $query->delete();
+        }else{
+            $query->where($model->getPrimaryKey(), $statement);
         }
-        return 0;
+
+        return $query->delete();
     }
+
 
     /**
      *
      * @param array $attributes
      * @return \static
      */
-    public static function create(array $attributes = array()) {
-        $model = new static($attributes);
-        $model->setNewRecord(true);
+    public static function create($attributes = [],$filterKeys = []) {
+        $model = new static($attributes,$filterKeys);
         $model->save();
         return $model;
+    }
+
+    public static function model($attributes = [],$filterKeys = []) {
+        $model = new static($attributes,$filterKeys);
+        return $model;
+    }
+
+    /**
+     * @param $attributes
+     * @param $filterKeys
+     *
+     * @return static
+     */
+    public static function fromArray($attributes = [],$filterKeys = []) {
+        $model = new static($attributes,$filterKeys);
+        return $model;
+    }
+
+    public static function truncate() {
+        DB::truncateTable(static::tableName());
     }
 
     /**
@@ -336,16 +421,9 @@ abstract class Model implements \ArrayAccess
     public function getAttributes($keys = []) {
         if(!empty($keys)){
             return Arr::find($this->attributes,$keys);
-        }else if(is_array($this->columns)){
-            return Arr::find($this->attributes,$this->columns);
         }
 
         return $this->attributes;
-    }
-
-    public function export($class,$keys = []){
-        $model = new $class($this->attributes,$keys);
-        return $model;
     }
 
     private function getClassName(){
@@ -353,33 +431,44 @@ abstract class Model implements \ArrayAccess
         return strtolower($className);
     }
 
-    public static function getDefaultTableName(){
-        $className = explode('\\', get_called_class())[0];
+    private static function getDefaultTableName(){
+        $array = explode('\\', get_called_class());
+        $className = end($array);
         $className = preg_replace('/([A-Z])/', '_$1', $className);
         return strtolower(trim($className,'_'));
     }
 
+    /**
+     * 返回表名
+     * @return string
+     */
+    public static function tableName(){
+        return static::getDefaultTableName();
+    }
 
     public function __call($name, $arguments)
     {
-        $query = DB::table($this->getTable(),$this->tableAliasName());
+        $query = DB::table(static::tableName());
         $query->setFetchClass(get_called_class());
         return call_user_func_array([$query,$name],$arguments);
     }
 
-    public static function __callStatic($name, $arguments)
-    {
 
+    public static function __callStatic($method, $arguments)
+    {
         $model = new static;
-        $query = DB::table($model->getTable(),$model->tableAliasName());
-        $query->setFetchClass(get_called_class());
-        if(Str::startsWith($name,'findBy')){
-            $columnName = preg_replace('/([A-Z])/', '_$1', str_ireplace('findBy','',$name));
+        if(method_exists($model,$method)){
+            return $model->$method(...$arguments);
+        }
+        $query = DB::table(static::tableName());
+        $query->asObject(get_called_class());
+        if(Str::startsWith($method,'findBy')){
+            $columnName = preg_replace('/([A-Z])/', '_$1', str_ireplace('findBy','',$method));
             $columnName = strtolower(trim($columnName,'_'));
             array_unshift($arguments,$columnName);
-            return call_user_func_array([$query,'where'],$arguments);
+            return $query->where(...$arguments);
         }
-        return call_user_func_array([$query,$name],$arguments);
+        return $query->$method(...$arguments);
     }
 
 

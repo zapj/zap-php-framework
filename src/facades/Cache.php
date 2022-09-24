@@ -7,7 +7,7 @@ use zap\cache\FileCache;
 use zap\cache\RedisCache;
 
 /**
- * @method static get(string $key, $default = null)
+ * @method static get($key, $default = null, $ttl = null)
  * @method static set($key, $value, $ttl = null)
  * @method static delete(string $key)
  * @method static clear()

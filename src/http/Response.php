@@ -85,7 +85,7 @@ class Response {
     }
 
     public function flash($message, $type = Session::INFO){
-        Session::instance()->addFlash($message,$type);
+        Session::instance()->add_flash($message,$type);
         return $this;
     }
 
