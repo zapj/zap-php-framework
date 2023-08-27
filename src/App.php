@@ -178,6 +178,12 @@ class App implements \ArrayAccess
         return Router::create();
     }
 
+    public function run(){
+        $router = Router::create();
+        return $router->dispatch();
+    }
+
+
     public function getLogger($name = 'app'){
         $name = config('log.default',$name);
         if(isset($this->logger[$name])){
