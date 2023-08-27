@@ -51,6 +51,13 @@ class View {
         static::$globalData[$name] = $value;
     }
 
+    public static function paths($path = null){
+        if($path != null){
+            array_unshift(static::$templatePaths,$path);
+        }
+        return static::$templatePaths;
+    }
+
     public function __get($name)
     {
         if(isset($this->params[$name])){
