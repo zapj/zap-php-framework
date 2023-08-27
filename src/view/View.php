@@ -122,14 +122,14 @@ class View {
     private function prepare($name){
         $this->viewFile = $this->resolveTemplate($name);
         if(is_null($this->viewFile)){
-            throw new ViewNotFoundException('Template file not found , File:'.$this->viewFile);
+            throw new ViewNotFoundException('Template file not found , File name:'.$name);
         }
         $this->initViewRenderer();
     }
 
     private function resolveTemplate($template){
         $template = str_replace('.','/',$template);
-        foreach($this->templatePaths as $tplPath){
+        foreach(static::$templatePaths as $tplPath){
             $tplFullPath = $tplPath . '/' . $template .'.php';
             if(is_file($tplFullPath)){
                 return $tplFullPath;
