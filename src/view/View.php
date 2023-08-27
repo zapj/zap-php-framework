@@ -20,7 +20,9 @@ class View {
 
     private $_blocksStack = [];
 
-    protected $templatePaths = [];
+    protected static $templatePaths = [];
+
+    public static $globalData = [];
 
     /**
      * @var \zap\view\PHPRenderer
@@ -34,15 +36,19 @@ class View {
         $this->viewName = $name;
 
         if(($theme = config('config.theme',false)) !== false){
-            array_unshift($this->templatePaths,themes_path("/$theme"));
+            array_unshift(static::$templatePaths,themes_path("/$theme"));
         }else{
-            array_unshift($this->templatePaths,resource_path('/views'));
+            array_unshift(static::$templatePaths,resource_path('/views'));
         }
         if(config('config.set_theme_include_path',false) === false){
-            set_include_path(get_include_path() . PATH_SEPARATOR .  join(PATH_SEPARATOR,$this->templatePaths));
+            set_include_path(get_include_path() . PATH_SEPARATOR .  join(PATH_SEPARATOR,static::$templatePaths));
             config_set('config.set_theme_include_path',true);
         }
         $this->prepare($name);
+    }
+
+    public static function share($name,$value){
+        static::$globalData[$name] = $value;
     }
 
     public function __get($name)
@@ -109,7 +115,7 @@ class View {
     private function prepare($name){
         $this->viewFile = $this->resolveTemplate($name);
         if(is_null($this->viewFile)){
-            throw new ViewNotFoundException('Template file not found');
+            throw new ViewNotFoundException('Template file not found , File:'.$this->viewFile);
         }
         $this->initViewRenderer();
     }
