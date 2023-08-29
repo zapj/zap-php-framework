@@ -287,6 +287,10 @@ function url_to($url, $params = null, $queryString = true) {
     return base_url($url);
 }
 
+function url_action($controller,$queryParams = null,$pathParams = null){
+    return \zap\facades\Url::action($controller,$queryParams,$pathParams);
+}
+
 function register_scripts($urls, $position = ASSETS_HEAD) {
     $position = 'scripts_' . $position;
     if (!app()->$position) {
