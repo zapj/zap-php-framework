@@ -16,8 +16,7 @@ class UrlHelper
 
     public function home(){
         $prefix = rtrim(app()->router->currentRoute['pattern'],'.*/');
-        $baseUrl = app()->router->baseUrl . $prefix;
-        return $baseUrl;
+        return app()->router->baseUrl . $prefix;
     }
 
     public function current(){
