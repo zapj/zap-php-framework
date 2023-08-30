@@ -90,6 +90,10 @@ class View {
         $this->layout = $this->resolveTemplate($layout);
     }
 
+    public function include($name,$blockName = '_include'){
+        $this->engine->_render($this->resolveTemplate($name),$blockName);
+    }
+
     public function block($name) {
         return isset($this->blocks[$name]) ? $this->blocks[$name] : '';
     }

@@ -24,7 +24,7 @@ abstract class ViewRenderer
 
 
     public function include($name,$blockName = '_include'){
-        return $this->view->_render($name,$blockName);
+        return $this->view->include($name,$blockName);
     }
 
     public function block($name) {
