@@ -23,8 +23,8 @@ abstract class ViewRenderer
     }
 
 
-    public function include($name){
-        return $this->engine->_render($name,'_include');
+    public function include($name,$blockName = '_include'){
+        return $this->view->_render($name,$blockName);
     }
 
     public function block($name) {
