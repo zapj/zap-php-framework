@@ -2,6 +2,7 @@
 
 namespace zap\db;
 
+use Exception;
 use PDO;
 use zap\DB;
 use zap\util\Random;
@@ -40,33 +41,40 @@ class Query
 
     /**
      *
-     * @var \zap\db\ZPDO
+     * @var ZPDO
      */
     protected $db;
 
+    /**
+     * @throws Exception
+     */
     public function __construct($zPDO = null) {
         $this->db = $zPDO ?: DB::connect();
     }
 
-    public function asArray(){
+    public function asArray(): Query
+    {
         $this->fetchMode = PDO::FETCH_ASSOC;
         $this->fetchClass = null;
         return $this;
     }
 
-    public function asObject($class = null){
+    public function asObject($class = null): Query
+    {
         $this->fetchMode = $class ? PDO::FETCH_CLASS : PDO::FETCH_OBJ;
         $this->fetchClass = $class ?? null;
         return $this;
     }
 
-    public function setFetchClass($class){
+    public function setFetchClass($class): Query
+    {
         $this->fetchMode = PDO::FETCH_CLASS;
         $this->fetchClass = $class;
         return $this;
     }
 
-    public function setFetchMode($fetchMode=null,$class=null){
+    public function setFetchMode($fetchMode=null,$class=null): Query
+    {
         $this->fetchMode = $fetchMode;
         $this->fetchClass = $class;
         return $this;
@@ -75,9 +83,10 @@ class Query
     /**
      * @param array|string $columns 列名
      *
-     * @return \zap\db\Query $this
+     * @return Query $this
      */
-    public function select($columns = '*') {
+    public function select($columns = '*'): Query
+    {
         if (is_string($columns)) {
             $this->select[] = $columns;
         } else if (is_array($columns)) {
@@ -88,10 +97,11 @@ class Query
 
     /**
      * @param array|string $tables
-     * @param null|string $alias
-     * @return \zap\db\Query $this
+     * @param string|null $alias
+     * @return Query $this
      */
-    public function from($tables,$alias = null) {
+    public function from($tables, string $alias = null): Query
+    {
         if(is_array($tables)){
             [$table,$alias] = $tables;
             $this->from[] = [$this->db->quoteTable($table),$alias];
@@ -106,20 +116,23 @@ class Query
      * @param string $name
      * @param string $operator (in|not in|<>|=|!=|....)
      * @param string|array $value
-     * @return \zap\db\Query $this
+     * @return Query $this
      */
-    function where($name, $operator = '=', $value = null) {
+    function where(string $name, string $operator = '=', $value = null): Query
+    {
         $this->_where($name,$operator,$value,'AND');
         return $this;
     }
 
-    function orWhere($name, $operator = '=', $value = null) {
+    function orWhere($name, $operator = '=', $value = null): Query
+    {
         $this->_where($name,$operator,$value,'OR');
         return $this;
     }
 
 
-    private function _where($name, $operator = '=', $value = null , $type = 'AND') {
+    private function _where($name, $operator = '=', $value = null , $type = 'AND'): Query
+    {
         if (is_callable($name)) {
             $this->isClosureWhere = true;
             $this->_addWhere('(', $type);
@@ -192,7 +205,7 @@ class Query
      *
      * @param string $conditions
      * @param array $params
-     * @return \zap\db\Query $this
+     * @return Query $this
      */
     function rawWhere($conditions, $params = array()) {
         $this->where[] = $conditions;
@@ -238,7 +251,7 @@ class Query
      *
      * @param string $statement
      * @param array $params
-     * @return \zap\db\Query
+     * @return Query
      */
     public function having($statement, $params = null) {
         $this->having[] = $statement;
@@ -330,7 +343,8 @@ class Query
         return $sql;
     }
 
-    public function getFullSQL(){
+    public function getFullSQL(): string
+    {
         return $this->getSQL() . ' PARAMS: ' . print_r($this->getParams(),true);
     }
 
@@ -364,9 +378,9 @@ class Query
      * @param $fetchMode
      * @param $fetchClass
      *
-     * @return \zap\db\AbstractModel
      */
-    public function first($fetchMode = null,$fetchClass = null) {
+    public function first($fetchMode = null,$fetchClass = null)
+    {
         $stm = $this->db->prepare($this->db->prepareSQL($this->getSQL()));
         $stm->execute($this->params);
         $this->db->rowCount = $stm->rowCount();
@@ -441,7 +455,8 @@ class Query
         return $stm->fetchColumn();
     }
 
-    public function distinct() {
+    public function distinct(): Query
+    {
         $this->distinct = true;
         return $this;
     }
@@ -449,14 +464,12 @@ class Query
     /**
      * Add param(s) to stack
      *
-     * @param array $params
+     * @param array|mixed $params
      *
-     * @return \zap\db\Query
+     * @return Query
      */
-    public function addParams($params) {
-        if (is_null($params)) {
-            return $this;
-        }
+    public function addParams($params): Query
+    {
         if (!is_array($params)) {
             $params = array($params);
         }
@@ -468,9 +481,10 @@ class Query
      * update set
      * @param string|array $name
      * @param mixed $value
-     * @return \zap\db\Query
+     * @return Query
      */
-    public function set($name, $value = null) {
+    public function set($name, $value = null): Query
+    {
         if (is_array($name)) {
             foreach ($name as $key => $val) {
                 $this->fields[] = "$key=:$key";
@@ -487,24 +501,28 @@ class Query
         return $this->params;
     }
 
-    public function bindValues($params) {
+    public function bindValues($params): Query
+    {
         $this->addParams($params);
         return $this;
     }
 
-    public function bind($name, $value) {
+    public function bind($name, $value): Query
+    {
         $this->params[$name] = $value;
         return $this;
     }
 
-    private function prepareSelectString() {
+    private function prepareSelectString(): string
+    {
         if (empty($this->select)) {
             $this->select("*");
         }
         return $this->distinct ? 'distinct ' . implode(", ", $this->select) . ' FROM ' : implode(", ", $this->select) . ' FROM ';
     }
 
-    private function prepareFrom() {
+    private function prepareFrom(): string
+    {
 
         $tables = [];
         foreach ($this->from as $from){
@@ -519,7 +537,8 @@ class Query
         return implode(", ", $tables) . " ";
     }
 
-    private function prepareUpdateSet() {
+    private function prepareUpdateSet(): string
+    {
         return ' SET ' . implode(",", $this->fields);
     }
 
@@ -531,14 +550,16 @@ class Query
         $this->where[] = $this->db->quoteColumn($column) . " " . $in . ' (' . implode(',', $params) . ')';
     }
 
-    private function prepareJoinString() {
+    private function prepareJoinString(): string
+    {
         if (!empty($this->join)) {
             return implode(" ", $this->join) . " ";
         }
         return '';
     }
 
-    private function prepareWhereString() {
+    private function prepareWhereString(): string
+    {
         $where = '';
         if (!empty($this->where)) {
             $where = ' WHERE ' . implode(' ', $this->where);
@@ -546,28 +567,32 @@ class Query
         return $where;
     }
 
-    private function prepareGroupByString() {
+    private function prepareGroupByString(): string
+    {
         if (!empty($this->groupBy)) {
             return " GROUP BY " . implode(", ", $this->groupBy) . " ";
         }
         return '';
     }
 
-    private function prepareHavingString() {
+    private function prepareHavingString(): string
+    {
         if (!empty($this->having)) {
             return " HAVING " . implode(", ", $this->having) . " ";
         }
         return '';
     }
 
-    private function prepareOrderByString() {
+    private function prepareOrderByString(): string
+    {
         if (!empty($this->orderBy)) {
             return " ORDER BY " . implode(", ", $this->orderBy) . " ";
         }
         return '';
     }
 
-    private function prepareLimitString() {
+    private function prepareLimitString(): string
+    {
         if (!empty($this->limit) && empty($this->offset)) {
             return " LIMIT {$this->limit}";
         } else if ($this->offset) {
@@ -576,7 +601,8 @@ class Query
         return '';
     }
 
-    public function limit($limit, $offset = null) {
+    public function limit($limit, $offset = null): Query
+    {
         $this->limit = $limit;
         if ($offset) {
             $this->offset = $offset;
@@ -584,7 +610,8 @@ class Query
         return $this;
     }
 
-    public function offset($offset) {
+    public function offset($offset): Query
+    {
         $this->offset = $offset;
         return $this;
     }
@@ -603,7 +630,8 @@ class Query
         $this->offset = 0;
     }
 
-    public function insert($tableName, $columns) {
+    public function insert($tableName, $columns): int
+    {
         return $this->db->insert($tableName, $columns);
     }
 

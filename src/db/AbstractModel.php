@@ -86,7 +86,8 @@ abstract class AbstractModel implements \ArrayAccess
      * Get PrimaryKey Name
      * @return string
      */
-    public function getPrimaryKey() {
+    public function getPrimaryKey(): string
+    {
         return $this->primaryKey;
     }
 
@@ -95,9 +96,10 @@ abstract class AbstractModel implements \ArrayAccess
      *
      * @param string $key
      *
-     * @return \zap\db\AbstractModel
+     * @return AbstractModel
      */
-    public function setPrimaryKey($key) {
+    public function setPrimaryKey(string $key): AbstractModel
+    {
         $this->primaryKey = $key;
         return $this;
     }
@@ -142,7 +144,7 @@ abstract class AbstractModel implements \ArrayAccess
      *
      * @param array $attributes
      *
-     * @return \zap\db\AbstractModel
+     * @return AbstractModel
      */
     public function fill(array $attributes = array(), $filterKeys = []) {
         if(!empty($filterKeys)){
@@ -206,7 +208,7 @@ abstract class AbstractModel implements \ArrayAccess
      *
      * @param array|int $ids
      *
-     * @return static|array|false|\zap\db\AbstractModel
+     * @return static|array|false|AbstractModel
      */
     public static function findById($ids,$fetchMode = null) {
         $model = new static;
@@ -261,6 +263,19 @@ abstract class AbstractModel implements \ArrayAccess
         }
         $query->set($params);
         return $query->update();
+    }
+
+    public static function count($columnName = '*',$condition = []) : int
+    {
+        $query = static::createQuery();
+        foreach ($condition as $key=>$where){
+            if(is_int($key)){
+                $query->where(...$where);
+            }else{
+                $query->where($key,$where);
+            }
+        }
+        return $query->count($columnName);
     }
 
     /**
@@ -426,12 +441,14 @@ abstract class AbstractModel implements \ArrayAccess
         return $this->attributes;
     }
 
-    private function getClassName(){
+    private function getClassName(): string
+    {
         $className = explode('\\', get_class($this))[0];
         return strtolower($className);
     }
 
-    private static function getDefaultTableName(){
+    private static function getDefaultTableName(): string
+    {
         $array = explode('\\', get_called_class());
         $className = end($array);
         $className = preg_replace('/([A-Z])/', '_$1', $className);
@@ -442,7 +459,8 @@ abstract class AbstractModel implements \ArrayAccess
      * 返回表名
      * @return string
      */
-    public static function tableName(){
+    public static function tableName(): string
+    {
         return static::getDefaultTableName();
     }
 
