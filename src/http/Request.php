@@ -91,7 +91,7 @@ class Request {
      * @param null|mixed $default
      * @return mixed
      */
-    public static function get($name, $default = null) {
+    public static function get($name = null, $default = null) {
         if ($name == null && $default == null) {
             return $_GET;
         }
