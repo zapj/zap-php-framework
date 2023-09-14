@@ -2,6 +2,7 @@
 
 namespace zap;
 
+use Exception;
 use PDO;
 use PDOException;
 use zap\db\Expr;
@@ -45,10 +46,12 @@ class DB
     protected static $default_name;
 
     /**
-     * @param $default_name string connection name
-     * @return \zap\db\ZPDO
+     * 连接DB
+     * @param $default_name string|null connection name
+     * @return ZPDO
+     * @throws Exception
      */
-    public static function connect($default_name = null)
+    public static function connect(string $default_name = null): ZPDO
     {
         if(is_null(static::$default_name)){
             static::$default_name = config("database.default");
@@ -67,7 +70,7 @@ class DB
         );
         $config = config("database.connections.{$default_name}");
         if(empty($config)){
-            throw new \Exception("could not find database config : {$default_name},Please check config/database.php");
+            throw new Exception("could not find database config : {$default_name},Please check config/database.php");
         }
         $db_driver = Arr::get($config,'driver','mysql');
         $db_host = Arr::get($config,'host','localhost');
@@ -95,15 +98,22 @@ class DB
     }
 
     /**
-     * @param  string  $default_name
-     *
-     * @return \zap\db\ZPDO
+     * 获取PDO
+     * @param string|null $default_name
+     * @return ZPDO
+     * @throws Exception
      */
-    public static function getPDO($default_name = null)
+    public static function getPDO(string $default_name = null): ZPDO
     {
         return static::connect($default_name);
     }
 
+    /**
+     * Quote
+     * @param mixed $value
+     * @return array|false|false[]|string|string[]
+     * @throws Exception
+     */
     public static function quote($value)
     {
         $pdo = static::connect(static::$default_name);
@@ -115,16 +125,24 @@ class DB
         return $pdo->quote($value);
     }
 
-    public static function prepare($statement, $options = [])
+    /**
+     * 预处理SQL
+     * @param string $statement
+     * @param array $options
+     * @return false|\PDOStatement
+     * @throws Exception
+     */
+    public static function prepare(string $statement, array $options = [])
     {
         $pdo = static::connect(static::$default_name);
         return $pdo->prepare($pdo->prepareSQL($statement),$options);
     }
 
     /**
-     * @param $statement
-     *
+     * 执行SQL
+     * @param string $statement
      * @return false|int
+     * @throws Exception
      */
     public static function exec($statement)
     {
@@ -133,54 +151,90 @@ class DB
     }
 
     /**
-     * @param $statement
-     * @param $params
-     *
-     * @return false|\zap\db\Statement
+     * query
+     * @param string $statement
+     * @param array $params
+     * @return false|\PDOStatement
+     * @throws Exception
      */
-    public static function query($statement,$params = [])
+    public static function query(string $statement, array $params = [])
     {
         $stm = static::prepare($statement);
         $stm->execute($params);
         return $stm;
     }
 
-    public static function scalar($statement,$params = []){
+    /**
+     * scalar
+     * @param string $statement
+     * @param array $params
+     * @return mixed
+     * @throws Exception
+     */
+    public static function scalar(string $statement, array $params = []){
         $stm = static::prepare($statement);
         $stm->execute($params);
         return $stm->fetchColumn();
     }
 
-    public static function getAll($statement,$params = [])
+    /**
+     * getAll
+     * @param string $statement
+     * @param array $params
+     * @return array|false
+     * @throws Exception
+     */
+    public static function getAll(string $statement, array $params = [])
     {
         $stm = static::prepare($statement);
         $stm->execute($params);
         return $stm->fetchAll();
     }
 
-    public static function getOne($statement,$params = [])
+    /**
+     * getOne
+     * @param string $statement
+     * @param array $params
+     * @return mixed
+     * @throws Exception
+     */
+    public static function getOne(string $statement, array $params = [])
     {
         $stm = static::prepare($statement);
         $stm->execute($params);
         return $stm->fetch();
     }
 
+    /**
+     * @throws Exception
+     */
     public static function __callStatic($name, $arguments)
     {
         return call_user_func_array([static::connect(static::$default_name),$name],$arguments);
     }
 
-    public static function table($table,$alias = null){
+    /**
+     * table model
+     * @param string $table
+     * @param string|null $alias
+     * @return Query
+     * @throws Exception
+     */
+    public static function table(string $table, string $alias = null): Query
+    {
         $query = new Query(static::connect(static::$default_name));
         return $query->from($table,$alias);
     }
 
     /**
+     * 开启事务
      * @param $callback \Closure
-     *
+     * @param string|null $connection
      * @return bool 事务成功返回true
+     * @throws Exception
      */
-    public static function transaction($callback,$connection = null){
+    public static function transaction(\Closure $callback, string $connection = null): bool
+    {
         try{
             static::connect($connection)->beginTransaction();
             if(is_callable($callback)){
@@ -203,23 +257,36 @@ class DB
         static::$default_name = $default_name;
     }
 
-    public static function raw($value){
+    public static function raw($value): Expr
+    {
         return Expr::make($value);
     }
 
-    public static function beginTransaction($connection = null)
+    public static function beginTransaction($connection = null): bool
     {
         $pdo = static::connect($connection);
         return $pdo->beginTransaction();
     }
 
-    public static function commit($connection = null)
+    /**
+     * 提交事务
+     * @param string|null $connection DB连接名称
+     * @return bool
+     * @throws \Exception
+     */
+    public static function commit(string $connection = null): bool
     {
         $pdo = static::connect($connection);
         return $pdo->commit();
     }
 
-    public static function rollback($connection = null)
+    /**
+     * 事务回滚
+     * @param string|null $connection
+     * @return bool
+     * @throws Exception
+     */
+    public static function rollback(string $connection = null): bool
     {
         $pdo = static::connect($connection);
         return $pdo->rollBack();
