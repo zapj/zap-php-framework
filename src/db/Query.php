@@ -165,6 +165,8 @@ class Query
                 break;
             case 'NOT LIKE':
             case 'LIKE':
+            case 'REGEXP':
+            case 'NOT REGEXP':
                 $where .= ' ' . $operator . ' ' . $colName . ' ';
                 break;
             case '=':
