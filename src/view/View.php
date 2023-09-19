@@ -25,7 +25,7 @@ class View {
     public static $globalData = [];
 
     /**
-     * @var \zap\view\PHPRenderer
+     * @var PHPRenderer
      */
     private $engine;
 
@@ -36,9 +36,9 @@ class View {
         $this->viewName = $name;
 
         if(($theme = config('config.theme',false)) !== false){
-            array_unshift(static::$templatePaths,themes_path("/$theme"));
+            array_unshift(static::$templatePaths,themes_path("$theme"));
         }else{
-            array_unshift(static::$templatePaths,resource_path('/views'));
+            array_unshift(static::$templatePaths,resource_path('views'));
         }
         if(config('config.set_theme_include_path',false) === false){
             set_include_path(get_include_path() . PATH_SEPARATOR .  join(PATH_SEPARATOR,static::$templatePaths));
@@ -51,7 +51,8 @@ class View {
         static::$globalData[$name] = $value;
     }
 
-    public static function paths($path = null){
+    public static function paths($path = null): array
+    {
         if($path != null){
             array_unshift(static::$templatePaths,$path);
         }
@@ -90,16 +91,23 @@ class View {
         $this->layout = $this->resolveTemplate($layout);
     }
 
+    public function extend($layout) {
+        $this->layout = $this->resolveTemplate($layout);
+    }
+
     public function include($name,$blockName = '_include'){
         $this->engine->_render($this->resolveTemplate($name),$blockName);
     }
 
     public function block($name) {
-        return isset($this->blocks[$name]) ? $this->blocks[$name] : '';
+        return $this->blocks[$name] ?? '';
     }
 
-    public function addViewPath($path){
-        $this->templatePaths[] = $path;
+    public function addPath($path): View
+    {
+        if($path != null){
+            array_unshift(static::$templatePaths,$path);
+        }
         return $this;
     }
 
@@ -114,7 +122,8 @@ class View {
         $this->blocks[$blockName] = rtrim(ob_get_clean());
     }
 
-    public static function make($name = null,$data = []){
+    public static function make($name = null,$data = []): View
+    {
         return new View($name,$data);
     }
 
@@ -123,6 +132,9 @@ class View {
         return $this->engine->render($return);
     }
 
+    /**
+     * @throws ViewNotFoundException
+     */
     private function prepare($name){
         $this->viewFile = $this->resolveTemplate($name);
         if(is_null($this->viewFile)){
@@ -131,7 +143,8 @@ class View {
         $this->initViewRenderer();
     }
 
-    private function resolveTemplate($template){
+    private function resolveTemplate($template)
+    {
         $template = str_replace('.','/',$template);
         foreach(static::$templatePaths as $tplPath){
             $tplFullPath = $tplPath . '/' . $template .'.php';
@@ -147,15 +160,15 @@ class View {
     }
 
 
-
     /**
      * 渲染模板
      * @param string $template 模板路径
      * @param array $data 参数
-     * @param bool $output 为true返回模板内容，false输出内容
+     * @param bool $return 返回View内容
      * @return string
      */
-    public static function render($template, $data = array(), $return = false) {
+    public static function render(string $template, array $data = [], bool $return = false): string
+    {
         $view = View::make($template,$data);
 
         return $view->display($return);

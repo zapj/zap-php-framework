@@ -2,7 +2,8 @@
 
 namespace zap\facades;
 
-use zap\cache\CacheFactory;
+use zap\cache\CacheException;
+use zap\cache\CacheInterface;
 use zap\cache\FileCache;
 use zap\cache\RedisCache;
 
@@ -26,8 +27,8 @@ class Cache extends Facade
     /**
      * @param $name
      *
-     * @return \zap\cache\CacheInterface
-     * @throws \zap\cache\CacheException
+     * @return CacheInterface
+     * @throws CacheException
      */
     public static function store($name){
         if(isset(static::$cacheDrivers[$name])){
@@ -40,8 +41,8 @@ class Cache extends Facade
     /**
      * @param $name
      *
-     * @return \zap\cache\CacheInterface
-     * @throws \zap\cache\CacheException
+     * @return CacheInterface
+     * @throws CacheException
      */
     private static function make($name){
         switch ($name){
@@ -49,15 +50,15 @@ class Cache extends Facade
                 return new RedisCache( config('cache.redis'));
             case 'file':
             default:
-                $cacheDir = config('cache.file.path',storage_path('/cache'));
+                $cacheDir = config('cache.file.path',var_path('cache'));
                 return new FileCache(['cacheDir'=>$cacheDir]);
         }
     }
 
     /**
-     * @return \zap\cache\CacheInterface
+     * @return CacheInterface
      */
-    protected static function getInstance()
+    protected static function getInstance(): CacheInterface
     {
         if(app()->_cache === null){
             app()->_cache = static::store(config('cache.default','file'));

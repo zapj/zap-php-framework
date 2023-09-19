@@ -54,12 +54,13 @@ class Router
     }
 
     /**
-     * @return \zap\http\Router
+     * @return Router
      */
-    public static function create(){
+    public static function create(): Router
+    {
         app()->router = new Router();
         //加载路由配置
-        $route_file = config_path('/route.php');
+        $route_file = config_path('route.php');
         if(is_file($route_file)){
             require_once $route_file;
         }
@@ -67,7 +68,7 @@ class Router
     }
 
 
-    public function filter($pattern, $fn, $options = [])
+    public function filter($pattern, $fn, $options = []): Router
     {
         $pattern = $this->baseRoute . '/' . trim($pattern, '/');
         $pattern = $this->baseRoute ? rtrim($pattern, '/') : $pattern;

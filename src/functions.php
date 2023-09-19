@@ -49,7 +49,8 @@ function base_url($url = null) {
  *
  * @return string
  */
-function root_path($path = null){
+function root_path($path = null): string
+{
     return \zap\App::instance()->rootPath($path);
 }
 
@@ -57,24 +58,34 @@ function base_path($path = null){
     return \zap\App::instance()->basePath($path);
 }
 
-function config_path($filename = null){
+function config_path($filename = null): string
+{
     return \zap\App::instance()->configPath($filename);
 }
 
-function storage_path($filename = null){
+function storage_path($filename = null): string
+{
     return \zap\App::instance()->storagePath($filename);
 }
 
-function resource_path($filename = null){
+function resource_path($filename = null): string
+{
     return \zap\App::instance()->resourcesPath($filename);
 }
 
-function assets_path($filename = null){
+function assets_path($filename = null): string
+{
     return \zap\App::instance()->assetsPath($filename);
 }
 
-function themes_path($filename = null){
+function themes_path($filename = null): string
+{
     return \zap\App::instance()->themesPath($filename);
+}
+
+function var_path($filename = null): string
+{
+    return \zap\App::instance()->varPath($filename);
 }
 
 /**

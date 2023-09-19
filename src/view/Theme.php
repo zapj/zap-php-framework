@@ -7,8 +7,8 @@ class Theme
     public static function render($template, $data = array(), $output = false) {
         $template = str_replace('.','/',$template);
         $tpl_filenames = [
-            'php' => themes_path('/'.config('config.theme','default').'/'.$template.'.php'),
-            'twig' => themes_path('/'.config('config.theme','default').'/'.$template.'.twig.php')
+            'php' => themes_path(config('config.theme','default').'/'.$template.'.php'),
+            'twig' => themes_path(config('config.theme','default').'/'.$template.'.twig.php')
         ];
         $templateFile = null;
         $templateEngine = 'php';
@@ -27,8 +27,6 @@ class Theme
 
     public static function engine($name){
         switch ($name){
-            case 'php':
-                return new PHPRenderer();
             case 'twig':
                 return new TwigViewRenderer();
             default:
