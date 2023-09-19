@@ -165,9 +165,9 @@ class View {
      * @param string $template 模板路径
      * @param array $data 参数
      * @param bool $return 返回View内容
-     * @return string
+     * @return string|null
      */
-    public static function render(string $template, array $data = [], bool $return = false): string
+    public static function render(string $template, array $data = [], bool $return = false): ?string
     {
         $view = View::make($template,$data);
 
