@@ -10,9 +10,10 @@ class Config
     protected static $storage;
 
     /**
-     * @return \zap\util\ZArray
+     * @return ZArray
      */
-    public static function instance() {
+    public static function instance(): ZArray
+    {
         if(is_null(static::$storage)){
             static::$storage = new ZArray();
         }
@@ -20,7 +21,7 @@ class Config
     }
 
     public static function load($name) {
-        $filename = config_path("/{$name}.php");
+        $filename = config_path("{$name}.php");
         if(is_file($filename)){
             $data = include $filename;
             static::instance()->replace([$name=>$data]);

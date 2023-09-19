@@ -3,6 +3,7 @@
 namespace zap;
 
 use ArrayObject;
+use Exception;
 use ReflectionClass;
 use zap\http\Router;
 use zap\util\Arr;
@@ -48,10 +49,8 @@ class App implements \ArrayAccess
 
     }
 
-    /**
-     * @return mixed
-     */
-    public static function instance()
+
+    public static function instance(): App
     {
         if ( ! isset(self::$instance)) {
             self::$instance = new App(realpath('../../../'));
@@ -61,7 +60,7 @@ class App implements \ArrayAccess
     }
 
 
-    public function baseUrl($path = null)
+    public function baseUrl($path = null): string
     {
         if ($path) {
             return $this->baseUrl.$path;
@@ -88,57 +87,66 @@ class App implements \ArrayAccess
         return $this->basePath;
     }
 
-    public function configPath($filename = null)
+    public function configPath($filename = null): string
     {
         if ($filename) {
-            return $this->basePath.'/config'.$filename;
+            return $this->basePath.'/config/'.$filename;
         }
 
-        return $this->basePath.'/config';
+        return $this->basePath.'/config/';
     }
 
-    public function assetsPath($filename = null)
+    public function assetsPath($filename = null): string
     {
         if ($filename) {
-            return $this->basePath.'/assets'.$filename;
+            return $this->basePath.'/assets/'.$filename;
         }
 
-        return $this->basePath.'/assets';
+        return $this->basePath.'/assets/';
     }
 
-    public function storagePath($filename = null)
+    public function storagePath($filename = null): string
     {
         if ($filename) {
-            return $this->basePath.'/storage'.$filename;
+            return $this->basePath.'/storage/'.$filename;
         }
 
-        return $this->basePath.'/storage';
+        return $this->basePath.'/storage/';
     }
 
-    public function resourcesPath($filename = null)
+    public function resourcesPath($filename = null): string
     {
         if ($filename) {
-            return $this->basePath.'/resources'.$filename;
+            return $this->basePath.'/resources/'.$filename;
         }
 
-        return $this->basePath.'/resources';
+        return $this->basePath.'/resources/';
     }
 
-    public function themesPath($filename = null)
+    public function themesPath($filename = null): string
     {
         if ($filename) {
-            return $this->basePath.'/themes'.$filename;
+            return $this->basePath.'/themes/'.$filename;
         }
 
-        return $this->basePath.'/themes';
+        return $this->basePath.'/themes/';
     }
 
-    public function isWin()
+    public function varPath($filename = null): string
+    {
+        if ($filename) {
+            return $this->basePath.'/var/'.$filename;
+        }
+
+        return $this->basePath.'/var/';
+    }
+
+    public function isWin(): bool
     {
         return DIRECTORY_SEPARATOR === '\\';
     }
 
-    public function isConsole()
+    public function isConsole(): bool
     {
         return php_sapi_name() == 'cli';
     }
@@ -172,18 +180,24 @@ class App implements \ArrayAccess
 
 
     /**
-     * @return \zap\http\Router
+     * @return Router
      */
-    public function createRouter(){
-        return Router::create();
+    public function createRouter(): Router
+    {
+        app()->router = new Router();
+        return app()->router;
     }
 
-    public function run(){
+    public function run(): bool
+    {
         $router = Router::create();
         return $router->dispatch();
     }
 
 
+    /**
+     * @throws Exception
+     */
     public function getLogger($name = 'app'){
         $name = config('log.default',$name);
         if(isset($this->logger[$name])){
@@ -191,97 +205,48 @@ class App implements \ArrayAccess
         }
 
         if(!class_exists('\Monolog\Logger')){
-            throw new \Exception('Monolog is not installed,  Please run \'composer require monolog/monolog\'');
+            throw new Exception('Monolog is not installed,  Please run \'composer require monolog/monolog\'');
         }
-
+        $handlerClass = config("log.{$name}.handler");
         try{
             $this->logger[$name] = new \Monolog\Logger($name);
-            $handlerClass = config("log.{$name}.handler");
             $params = config("log.{$name}.params",[]);
             $class = new ReflectionClass($handlerClass);
             if(!($class->isSubclassOf('\Monolog\Handler\HandlerInterface'))){
-                throw new \Exception('['.$handlerClass.'] must implement \Monolog\Handler\HandlerInterface interface ');
+                throw new Exception('['.$handlerClass.'] must implement \Monolog\Handler\HandlerInterface interface ');
             }
             $handler = $class->newInstanceArgs($params);
 
             $this->logger[$name]->pushHandler($handler);
         }catch (\ReflectionException $e){
-            throw new \Exception('Class not found ['.$handlerClass.']');
+            throw new Exception('Class not found ['.$handlerClass.']');
         }
 
         return $this->logger[$name];
     }
 
-    /**
-     * Whether a offset exists
-     *
-     * @link https://php.net/manual/en/arrayaccess.offsetexists.php
-     *
-     * @param  mixed  $offset  <p>
-     *                         An offset to check for.
-     *                         </p>
-     *
-     * @return bool true on success or false on failure.
-     * </p>
-     * <p>
-     * The return value will be casted to boolean if non-boolean was returned.
-     */
-    public function offsetExists($offset)
+
+    public function offsetExists($offset): bool
     {
         return isset(static::$container[$offset]);
     }
 
-    /**
-     * Offset to retrieve
-     *
-     * @link https://php.net/manual/en/arrayaccess.offsetget.php
-     *
-     * @param  mixed  $offset  <p>
-     *                         The offset to retrieve.
-     *                         </p>
-     *
-     * @return mixed Can return all value types.
-     */
     public function offsetGet($offset)
     {
         return static::$container[$offset];
     }
 
-    /**
-     * Offset to set
-     *
-     * @link https://php.net/manual/en/arrayaccess.offsetset.php
-     *
-     * @param  mixed  $offset  <p>
-     *                         The offset to assign the value to.
-     *                         </p>
-     * @param  mixed  $value   <p>
-     *                         The value to set.
-     *                         </p>
-     *
-     * @return void
-     */
     public function offsetSet($offset, $value)
     {
         static::$container[$offset] = $value;
     }
 
-    /**
-     * Offset to unset
-     *
-     * @link https://php.net/manual/en/arrayaccess.offsetunset.php
-     *
-     * @param  mixed  $offset  <p>
-     *                         The offset to unset.
-     *                         </p>
-     *
-     * @return void
-     */
     public function offsetUnset($offset){
         unset(static::$container[$offset]);
     }
 
-    public function has($name){
+    public function has($name): bool
+    {
         return $this->offsetExists($name);
     }
 

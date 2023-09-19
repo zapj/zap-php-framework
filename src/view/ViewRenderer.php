@@ -6,7 +6,7 @@ abstract class ViewRenderer
 {
 
     /**
-     * @var \zap\view\View
+     * @var View
      */
     protected $view;
 
@@ -20,6 +20,10 @@ abstract class ViewRenderer
 
     public function layout($layout) {
         $this->view->layout($layout);
+    }
+
+    public function extend($layout) {
+        $this->view->extend($layout);
     }
 
 

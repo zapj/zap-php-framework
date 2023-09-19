@@ -95,7 +95,7 @@ class Language {
      */
     public static function useLanguage($language = 'zh-CN') {
         static::instance()->language = $language;
-        static::addPath(resource_path('/languages'));
+        static::addPath(resource_path('languages'));
     }
 
     /**
