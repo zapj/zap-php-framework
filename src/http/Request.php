@@ -4,21 +4,47 @@ namespace zap\http;
 use zap\util\Arr;
 use zap\util\Str;
 
+
+/**
+ * @method static string ip($default = '')
+ * @method static realIp(string $default = '', bool $exclude_reserved = false)
+ * @method static string getPreferredLanguage()
+ * @method static string|array get(string $name = null, $default = null)
+ * @method static string|array post(string $name = null, $default = null)
+ * @method static string|array all(string $name = null, $default = null)
+ * @method static string protocol()
+ * @method static bool isAjax()
+ * @method static bool isJson()
+ * @method static bool isXml()
+ * @method static string prevUrl($default = '')
+ * @method static string userAgent($default = '')
+ * @method static file($key = null, $default = null)
+ * @method static cookie($key = null, $default = null)
+ * @method static server($key = null, $default = null)
+ * @method static headers($key = null, $default = null)
+ * @method static string query_string($default = '')
+ * @method static bool isMethod(string $method)
+ * @method static bool isPost()
+ * @method static bool isGet()
+ * @method static string method()
+ * @method static string raw()
+ * @method static string getScriptName($suffix = '')
+ */
 class Request {
 
     /**
-     * @var \zap\http\Request
+     * @var Request
      */
     protected static $instance;
 
     protected $method;
 
-    protected $_methods = [ "GET","POST","DELETE", "HEAD", "PUT" ];
+//    protected $_methods = [ "GET","POST","DELETE", "HEAD", "PUT" ];
 
     /**
-     * @return \zap\http\Request
+     * @return Request
      */
-    public static function instance()
+    public static function instance(): Request
     {
         if(is_null(static::$instance)){
             static::$instance = new Request();
@@ -30,10 +56,10 @@ class Request {
     /**
      * Get the public ip address of the user.
      *
-     * @param   string $default
+     * @param string $default
      * @return  array|string
      */
-    public static function ip($default = '0.0.0.0') {
+    public function ip(string $default = '') {
         $clientIP = $default;
         if (isset($_SERVER['HTTP_CLIENT_IP'])) {
             $clientIP = $_SERVER['HTTP_CLIENT_IP'];
@@ -56,12 +82,12 @@ class Request {
 
     /**
      * 获取真实IP地址
-     * @param $default
-     * @param $exclude_reserved
+     * @param string $default
+     * @param bool $exclude_reserved
      *
      * @return false|mixed|string
      */
-    public static function real_ip($default = '0.0.0.0', $exclude_reserved = false) {
+    public function realIp(string $default = '', bool $exclude_reserved = false) {
         static $server_keys = null;
         if (empty($server_keys)) {
             $server_keys = array('HTTP_CLIENT_IP', 'REMOTE_ADDR', 'HTTP_X_CLUSTER_CLIENT_IP', 'HTTP_X_FORWARDED_FOR');
@@ -87,11 +113,11 @@ class Request {
 
     /**
      * Request Get
-     * @param string $name
+     * @param string|null $name
      * @param null|mixed $default
      * @return mixed
      */
-    public static function get($name = null, $default = null) {
+    public function get(string $name = null, $default = null) {
         if ($name == null && $default == null) {
             return $_GET;
         }
@@ -100,11 +126,11 @@ class Request {
 
     /**
      * Request Post
-     * @param string $name
+     * @param string|null $name
      * @param null|mixed $default
      * @return mixed
      */
-    public static function post($name = null, $default = null) {
+    public function post(string $name = null, $default = null) {
         if ($name == null && $default == null) {
             return $_POST;
         }
@@ -113,18 +139,19 @@ class Request {
 
     /**
      * Request All
-     * @param string $name
+     * @param string|null $name
      * @param null|mixed $default
      * @return mixed
      */
-    public static function all($name = null, $default = null) {
+    public function all(string $name = null, $default = null) {
         if ($name == null && $default == null) {
             return $_REQUEST;
         }
         return Arr::get($_REQUEST, $name, $default);
     }
 
-    public static function protocol() {
+    public function protocol(): string
+    {
         if (static::server('HTTPS') == 'on' or
             static::server('HTTPS') == 1 or
             static::server('SERVER_PORT') == 443 or
@@ -136,48 +163,49 @@ class Request {
     }
 
 
-    public static function isAjax() {
-        return (static::server('HTTP_X_REQUESTED_WITH') !== null) and strtolower(static::server('HTTP_X_REQUESTED_WITH')) === 'xmlhttprequest';
+    public function isAjax(): bool
+    {
+        return ($this->server('HTTP_X_REQUESTED_WITH') !== null) and strtolower($this->server('HTTP_X_REQUESTED_WITH')) === 'xmlhttprequest';
     }
 
-    public static function isJson() {
-        $content_type = isset($_SERVER['CONTENT_TYPE']) ? $_SERVER['CONTENT_TYPE'] : '';
+    public function isJson(): bool
+    {
+        $content_type = $_SERVER['CONTENT_TYPE'] ?? '';
         return (stripos($content_type, 'application/json') !== false);
     }
 
-    public static function isXml() {
-        $content_type = isset($_SERVER['CONTENT_TYPE']) ? $_SERVER['CONTENT_TYPE'] : '';
+    public function isXml(): bool
+    {
+        $content_type = $_SERVER['CONTENT_TYPE'] ?? '';
         return (stripos($content_type, 'application/xml') !== false);
     }
 
-    public static function referer($default = '') {
-        return static::server('HTTP_REFERER', $default);
+    public function prevUrl($default = '') {
+        return $this->server('HTTP_REFERER', $default);
     }
 
-    public static function user_agent($default = '') {
-        return static::server('HTTP_USER_AGENT', $default);
+    public function userAgent($default = '') {
+        return $this->server('HTTP_USER_AGENT', $default);
     }
 
-    public static function file($key = null, $default = null) {
-        return (func_num_args() === 0) ? $_FILES : Arr::get($_FILES, $key, $default);
+    public function file($key = null, $default = null) {
+        return is_null($key) ? $_FILES : Arr::get($_FILES, $key, $default);
     }
 
     /**
-     * 从$_COOKIE中获取cookie
-     *
-     * @param    string  $index    索引 (如果为空返回全部)
-     * @param    mixed   $default  默认值
-     * @return   string|array
+     * @param $key
+     * @param $default
+     * @return array|mixed|null
      */
-    public static function cookie($key = null, $default = null) {
+    public function cookie($key = null, $default = null) {
         return (func_num_args() === 0) ? $_COOKIE : Arr::get($_COOKIE, $key, $default);
     }
 
-    public static function server($key = null, $default = null) {
-        return (func_num_args() === 0) ? $_SERVER : Arr::get($_SERVER, strtoupper($key), $default);
+    public function server($key = null, $default = null) {
+        return is_null($key) ? $_SERVER : Arr::get($_SERVER, strtoupper($key), $default);
     }
 
-    public static function headers($key = null, $default = null) {
+    public function headers($key = null, $default = null) {
         static $headers = null;
         if ($headers === null) {
             if (function_exists('getallheaders')) {
@@ -194,12 +222,12 @@ class Request {
                 }
             }
         }
-        return empty($headers) ? $default : ((func_num_args() === 0) ? $headers : Arr::get($headers, $key, $default));
+        return empty($headers) ? $default : (is_null($key) ? $headers : Arr::get($headers, $key, $default));
     }
 
 
-    public static function query_string($default = '') {
-        return static::server('QUERY_STRING', $default);
+    public function query_string($default = '') {
+        return $this->server('QUERY_STRING', $default);
     }
 
     /**
@@ -207,15 +235,18 @@ class Request {
      * @param string $method
      * @return bool
      */
-    public static function isMethod($method = 'get') {
+    public function isMethod(string $method): bool
+    {
         return (strtoupper(static::instance()->method) == strtoupper($method));
     }
 
-    public static function isPost() {
+    public function isPost(): bool
+    {
         return static::isMethod('post');
     }
 
-    public static function isGet() {
+    public function isGet(): bool
+    {
         return static::isMethod('get');
     }
 
@@ -223,15 +254,16 @@ class Request {
      * Get Method
      * @return string
      */
-    public static function method() {
-        return Request::instance()->method;
+    public function method(): string
+    {
+        return $this->method;
     }
 
-    public static function raw() {
+    public function raw() {
         return file_get_contents('php://input');
     }
 
-    public static function getScriptName($suffix = '') {
+    public function getScriptName($suffix = '') {
         if (isset($_SERVER['SCRIPT_FILENAME']) && !empty($_SERVER['SCRIPT_FILENAME'])) {
             return basename($_SERVER['SCRIPT_FILENAME'], $suffix);
         } else if (isset($_SERVER['PHP_SELF']) && !empty($_SERVER['PHP_SELF'])) {
@@ -257,7 +289,7 @@ class Request {
         }
     }
 
-    function getPreferredLanguage() {
+    public function getPreferredLanguage() {
         $default = config('config.fallback_locale','zh-CN');
         $available_languages = config('config.available_languages',[]);
         $acceptLanguages = preg_split('#[,;]#',$_SERVER["HTTP_ACCEPT_LANGUAGE"]);
@@ -269,6 +301,14 @@ class Request {
         return $default;
     }
 
+
+    public static function __callStatic($method, $arguments)
+    {
+        if(!method_exists(static::instance(),$method)){
+            return false;
+        }
+        return static::instance()->$method(...$arguments);
+    }
 
 
 }
