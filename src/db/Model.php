@@ -11,7 +11,9 @@ use function app;
 
 
 /**
- * @method static \zap\db\Query select($columns = '*')
+ * @method static Query select($columns = '*')
+ * @method static insert($data)
+ * @method static batchInsert($rows)
  */
 abstract class Model implements \ArrayAccess
 {
@@ -77,7 +79,7 @@ abstract class Model implements \ArrayAccess
      */
     public function getTable() {
         if (empty($this->table)) {
-            $this->table = static::getDefaultTableName();
+            $this->table = static::tableName();
         }
         return $this->table;
     }
@@ -182,24 +184,34 @@ abstract class Model implements \ArrayAccess
     }
 
     /**
-     * @param $params
+     * @param array $params
      *
-     * @return \zap\db\Query
+     * @return Query
      */
-    public static function find($params = []) {
+    public static function find(array $params = []): Query
+    {
         $query = DB::table(static::tableName());
         $query->asObject(get_called_class());
         foreach($params as $name=>$value){
-            $query->where($name,$value);
+            if(is_int($name)){
+                $query->where(...$value);
+            }else{
+                $query->where($name,$value);
+            }
         }
         return $query;
     }
 
-    public static function createQuery($params = []) {
+    public static function createQuery($params = []): Query
+    {
         $query = DB::table(static::tableName());
         $query->asObject(get_called_class());
         foreach($params as $name=>$value){
-            $query->where($name,$value);
+            if(is_int($name)){
+                $query->where(...$value);
+            }else{
+                $query->where($name,$value);
+            }
         }
         return $query;
     }
