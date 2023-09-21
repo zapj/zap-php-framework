@@ -118,11 +118,11 @@ class Session
     {
         if (!is_null($type)) {
             if (!empty($_SESSION[self::FLASH_MESSAGE_KEY][$type]))
-                return $_SESSION[self::FLASH_MESSAGE_KEY][$type];
+                return true;
         } else {
             foreach ([self::ERROR, self::INFO, self::WARNING, self::SUCCESS] as $type) {
                 if (!empty($_SESSION[self::FLASH_MESSAGE_KEY][$type]))
-                    return $_SESSION[self::FLASH_MESSAGE_KEY][$type];
+                    return true;
             }
         }
         return false;
@@ -150,10 +150,10 @@ class Session
 
     /**
      * 清除Flash
-     * @param array|null $types
+     * @param array|null|string $types
      * @return $this
      */
-    public function clearFlash(array $types = null): Session
+    public function clearFlash($types = null): Session
     {
         if (is_null($types)) {
             unset($_SESSION[self::FLASH_MESSAGE_KEY]);
