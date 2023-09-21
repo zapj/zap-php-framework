@@ -38,7 +38,7 @@ class Request extends Facade {
      */
     protected static function getInstance()
     {
-        if(app()->has(self::NAME)){
+        if(!app()->has(self::NAME)){
             app()->set(self::NAME,ZapRequest::instance());
         }
 
