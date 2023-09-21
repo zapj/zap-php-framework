@@ -1,10 +1,9 @@
 <?php
 
 
-use zap\http\Request;
 use zap\http\Response;
 use zap\http\Session;
-use zap\util\Str;
+use zap\http\ZapRequest;
 
 const Z_DAY = 86400;
 const Z_HOUR = 3600;
@@ -442,9 +441,9 @@ function clear_flash($type = null){
     return Session::instance()->clearFlash($type);
 }
 
-function req(): Request
+function req(): ZapRequest
 {
-    return Request::instance();
+    return ZapRequest::instance();
 }
 
 function response($content = null, int $statusCode = 200, ?array $headers = []): Response
