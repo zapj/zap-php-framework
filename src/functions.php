@@ -461,6 +461,14 @@ function add_action($hookName,$callback, int $priority = 10){
     \zap\component\Hooks::instance()->add_action($hookName,$callback, $priority);
 }
 
+function apply_filters($hookName,$value,...$args){
+    \zap\component\Hooks::instance()->apply_filters($hookName,$value,...$args);
+}
+
+function do_action($hookName,...$args){
+    \zap\component\Hooks::instance()->do_action($hookName,...$args);
+}
+
 function remove_filter($hookName,$callback,$priority = 10){
     \zap\component\Hooks::instance()->remove_filter($hookName,$callback,$priority);
 }
