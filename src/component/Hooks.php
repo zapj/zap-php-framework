@@ -3,16 +3,16 @@ namespace zap\component;
 
 class Hooks
 {
-    protected static Hooks $instance;
+    protected static $instance;
 
-    protected array $filter = [];
-    protected array $action = [];
-    protected array $tags = [];
+    protected $filter = [];
+    protected $action = [];
+    protected $tags = [];
 
-    protected int $lastFilterId;
-    protected string $currentHookName;
+    protected $lastFilterId;
+    protected $currentHookName;
 
-    private string $filterOrAction;
+    private $filterOrAction;
 
     protected function __construct()
     {
