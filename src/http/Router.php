@@ -338,7 +338,9 @@ class Router
         $middleware->router = $this;
         $middleware->baseUrl = $this->getbaseUrl();
         $middleware->currentUri = $this->getCurrentUri();
-        app()->dispatcher = $middleware;
+        if(isset($options['dispatcher'])){
+            app()->dispatcher = $middleware;
+        }
         return $middleware->handle();
     }
 
