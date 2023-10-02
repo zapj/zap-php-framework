@@ -336,7 +336,12 @@ class Router
             if(!$reflect->isInstantiable() || !$reflect->isSubclassOf(Middleware::class)){
                 return false;
             }
-            $middleware = $reflect->newInstanceArgs(['options'=>$options]);
+            if($reflect->getConstructor()->getNumberOfParameters()){
+                $middleware = $reflect->newInstanceArgs(['options'=>$options]);
+            }else{
+                $middleware = $reflect->newInstance();
+            }
+
             $middleware->router = $this;
             $middleware->baseUrl = $this->getBaseUrl();
             $middleware->currentUri = $this->getCurrentUri();
