@@ -195,18 +195,12 @@ class Router
 
                     $matches = array_slice($matches, 1);
 
-                    $params = array_map(function ($match, $index) use ($matches) {
+                    $params = [];
+                    for ($i = 0; $i < count($matches); $i=$i+2) {
+                        $params[]= $matches[$i+1][0][0] ?? null;
+                    }
 
-                        if (isset($matches[$index + 1]) && isset($matches[$index + 1][0]) && is_array($matches[$index + 1][0])) {
-                            if ($matches[$index + 1][0][1] > -1) {
-                                return trim(substr($match[0][0], 0, $matches[$index + 1][0][1] - $match[0][1]), '/');
-                            }
-                        }
-
-                        return isset($match[0][0]) && $match[0][1] != -1 ? trim($match[0][0], '/') : null;
-                    }, $matches, array_keys($matches));
-
-                    $this->invoke($route_callable);
+                    $this->invoke($route_callable,$params);
 
                     ++$numHandled;
                 }
@@ -247,7 +241,7 @@ class Router
         return true;
     }
 
-    private function handle($routes)
+    private function handle($routes): bool
     {
         $is_match = false;
         foreach ($routes as $route) {
@@ -255,18 +249,11 @@ class Router
             if ($is_match) {
 
                 $matches = array_slice($matches, 1);
-
                 $this->currentRoute = $route;
-                $params = array_map(function ($match, $index) use ($matches) {
-
-                    if (isset($matches[$index + 1]) && isset($matches[$index + 1][0]) && is_array($matches[$index + 1][0])) {
-                        if ($matches[$index + 1][0][1] > -1) {
-                            return trim(substr($match[0][0], 0, $matches[$index + 1][0][1] - $match[0][1]), '/');
-                        }
-                    }
-
-                    return isset($match[0][0]) && $match[0][1] != -1 ? trim($match[0][0], '/') : null;
-                }, $matches, array_keys($matches));
+                $params = [];
+                for ($i = 0; $i < count($matches); $i=$i+2) {
+                    $params[]= $matches[$i+1][0][0] ?? null;
+                }
 
                 $this->invoke($route['fn'], $params, $route['options']);
 
