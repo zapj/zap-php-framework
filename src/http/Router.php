@@ -22,14 +22,8 @@ class Router
 
     private $middlewares = [];
 
-    /**
-     * @var array [object|callable] The function to be executed when no route has been matched
-     */
     protected $notFoundCallback = [];
 
-    /**
-     * @var string Current base route, used for (sub)route mounting
-     */
     private $baseRoute = '';
 
     private $requestMethod = 'GET';
@@ -44,6 +38,7 @@ class Router
 
     private $defaultMethods = 'GET|POST|PUT|DELETE|OPTIONS|PATCH|HEAD';
 
+    protected $isAjax = false;
     /**
      * @return string
      */
@@ -51,6 +46,7 @@ class Router
     {
         $this->requestMethod = Request::method();
         $this->currentUri = $this->getCurrentUri();
+        $this->isAjax = Request::isAjax();
     }
 
     /**
@@ -220,6 +216,9 @@ class Router
             $this->invoke($this->notFoundCallback['/']);
         } elseif ($numHandled == 0) {
             header($_SERVER['SERVER_PROTOCOL'] . ' 404 Not Found');
+            if($this->isAjax){
+                Response::json(['code'=>404,'msg'=>'404 Not Found']);
+            }
             ZView::render(ZAP_SRC.'/resources/views/http/404.html');
         }
     }
@@ -293,14 +292,11 @@ class Router
                     if ($reflectedMethod->isStatic()) {
                         forward_static_call_array(array($controller, $method), $params);
                     } else {
-                        if (\is_string($controller)) {
-                            $controller = new $controller();
-                        }
+                        $controller = new $controller();
                         call_user_func_array(array($controller, $method), $params);
                     }
                 }
             } catch (\ReflectionException $e) {
-                //method notfound
                 if(call_user_func_array(array($controller, '_notfound'), $params) === NULL){
                     $this->trigger404();
                 }
@@ -308,45 +304,54 @@ class Router
         }else if(class_exists($fn)){
             $controller = new $fn();
             if(is_array($params) && isset($params[0]) && method_exists($controller,$params[0])){
-                call_user_func_array([$controller,$params[0]],array_slice($params[0],1));
+                call_user_func_array([$controller,$params[0]],array_slice($params,1));
             }
         }
     }
 
-    private function invokeMiddleware($fn, $options = []){
+    private function invokeMiddleware($fn, $options = []): bool
+    {
         $ret = true;
-        if (is_callable($fn) && !isset($options['namespace'])) {
+        if (is_callable($fn)) {
             $ret = call_user_func_array($fn, ['router' => $this]);
-        } else if(is_callable($fn) && isset($options['namespace'])) {
-            if(call_user_func_array($fn,['router'=>$this]) === false){
-                return false;
-            }
-            $class = Arr::get($options,'dispatcher',Dispatcher::class);
-            $ret = $this->callMiddleware($class,$options);
+        }else if(stripos($fn, '@') !== false){
+            [$controllerName, $method] = explode('@', $fn);
+            $controller = new $controllerName();
+            $ret = call_user_func_array([$controller,$method],$options);
         }else {
             $ret = $this->callMiddleware($fn,$options);
         }
+
+        if($ret && isset($options['namespace'])) {
+            $class = $options['dispatcher'] ?? Dispatcher::class;
+            $ret = $this->callMiddleware($class,$options);
+        }
+
         return (is_null($ret) || $ret);
     }
 
     private function callMiddleware($fn,$options = []){
-        $reflect = new \ReflectionClass($fn);
-        if(!$reflect->isInstantiable() || !$reflect->isSubclassOf(Middleware::class)){
+        try{
+            $reflect = new \ReflectionClass($fn);
+            if(!$reflect->isInstantiable() || !$reflect->isSubclassOf(Middleware::class)){
+                return false;
+            }
+            $middleware = $reflect->newInstanceArgs(['options'=>$options]);
+            $middleware->router = $this;
+            $middleware->baseUrl = $this->getBaseUrl();
+            $middleware->currentUri = $this->getCurrentUri();
+            if(isset($options['dispatcher'])){
+                app()->dispatcher = $middleware;
+            }
+            return $middleware->handle();
+        }catch (\ReflectionException $e){
             return false;
         }
-        $middleware = $reflect->newInstanceArgs(['options'=>$options]);
-        $middleware->router = $this;
-        $middleware->baseUrl = $this->getbaseUrl();
-        $middleware->currentUri = $this->getCurrentUri();
-        if(isset($options['dispatcher'])){
-            app()->dispatcher = $middleware;
-        }
-        return $middleware->handle();
     }
 
-    public function getCurrentUri()
+    public function getCurrentUri(): string
     {
-        $uri = substr(rawurldecode($_SERVER['REQUEST_URI']), strlen($this->getbaseUrl()));
+        $uri = substr(rawurldecode($_SERVER['REQUEST_URI']), strlen($this->getBaseUrl()));
         if (strstr($uri, '?')) {
             $uri = substr($uri, 0, strpos($uri, '?'));
         }else if(strstr($uri, '#')){
@@ -356,7 +361,7 @@ class Router
     }
 
 
-    public function getbaseUrl()
+    public function getBaseUrl(): string
     {
         if ($this->baseUrl === null) {
             $this->baseUrl = implode('/', array_slice(explode('/', $_SERVER['SCRIPT_NAME']), 0, -1)) ;
