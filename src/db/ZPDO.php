@@ -85,6 +85,47 @@ class ZPDO extends PDO
         return $stm->fetchAll();
     }
 
+    /**
+     * getAll
+     * @param string $statement
+     * @param array $params
+     * @param null $fetchMode
+     * @return array|false
+     */
+    public function getAll(string $statement, array $params = [],$fetchMode = null)
+    {
+        $stm = $this->prepare($statement);
+        $stm->execute($params);
+        return $stm->fetchAll($fetchMode);
+    }
+
+    /**
+     * get
+     * @param string $statement
+     * @param array $params
+     * @param null $fetchMode
+     * @return mixed
+     */
+    public function get(string $statement, array $params = [],$fetchMode = null)
+    {
+        $stm = $this->prepare($statement);
+        $stm->execute($params);
+        return $stm->fetch($fetchMode);
+    }
+
+
+    /**
+     * table Query ActiveRecord
+     * @param string $table
+     * @param string|null $alias
+     * @return Query
+     */
+    public function table(string $table, string $alias = null): Query
+    {
+        $query = new Query($this);
+        return $query->from($table,$alias);
+    }
+
     public function rawExec($statement)
     {
         return parent::exec($statement);
@@ -168,12 +209,14 @@ class ZPDO extends PDO
         return $key_names;
     }
 
-    public function setFetchMode($mode){
-        $this->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE , $mode);
+    public function setFetchMode($mode): bool
+    {
+        return $this->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE , $mode);
     }
 
-    public function setAutoCommit($value) {
-        $this->setAttribute(PDO::ATTR_AUTOCOMMIT, $value);
+    public function setAutoCommit($value): bool
+    {
+        return $this->setAttribute(PDO::ATTR_AUTOCOMMIT, $value);
     }
 
     public function getAutoCommit() {
@@ -219,7 +262,7 @@ class ZPDO extends PDO
      * Db insert
      * @param string $table 表名
      * @param array $data 插入的数据
-     * @return int Return Last id
+     * @return false|string LastID
      */
     public function insert(string $table, array $data) {
         $params = array();
@@ -279,7 +322,7 @@ class ZPDO extends PDO
 
         if(!empty($duplicate) && $this->driver == 'mysql'){
             $sql .= ' ON DUPLICATE KEY UPDATE '.join(',',$dupSet);
-        }else if(!empty($duplicate) && $this->driver == 'pssql'){
+        }else if(!empty($duplicate) && $this->driver == 'pgsql'){
             if(is_null($primaryKeys)){
                 reset($data);
                 $primaryKeys = key($data);
@@ -300,7 +343,7 @@ class ZPDO extends PDO
      * Db replace
      * @param string $table 表名
      * @param array $data 插入的数据
-     * @return int Return Last id
+     * @return int LastID
      */
     public function replace(string $table, array $data) {
         $params = [];
@@ -459,6 +502,16 @@ class ZPDO extends PDO
     {
         $name = preg_replace('/([A-Z])/', '_$1', $name);
         return strtolower(trim($name,'_'));
+    }
+
+    public function quote($value, $type = PDO::PARAM_STR)
+    {
+        if(is_array($value)){
+            return array_map(function($value) {
+                return $this->quote($value);
+            },$value);
+        }
+        return parent::quote($value, $type);
     }
 
 
