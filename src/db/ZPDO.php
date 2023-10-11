@@ -4,6 +4,7 @@ namespace zap\db;
 
 use PDO;
 use PDOException;
+use PDOStatement;
 use zap\exception\NotSupportedException;
 use zap\util\Arr;
 use zap\util\Random;
@@ -58,6 +59,45 @@ class ZPDO extends PDO
         return $this->driver . ':' . http_build_query($dsnElements,'',';');
     }
 
+    public function prepare($query, $options = [])
+    {
+        return parent::prepare($this->prepareSQL($query), $options);
+    }
+
+    public function exec($statement)
+    {
+        return parent::exec($this->prepareSQL($statement));
+    }
+
+    public function query($query, $params = [], ...$fetch_mode_args)
+    {
+        $stm = parent::query($this->prepareSQL($query), ...$fetch_mode_args);
+        $stm->execute($params);
+        $this->rowCount = $stm->rowCount();
+        return $stm;
+    }
+
+    public function select($query, $params = [], ...$fetch_mode_args)
+    {
+        $stm = parent::query($this->prepareSQL($query), ...$fetch_mode_args);
+        $stm->execute($params);
+        $this->rowCount = $stm->rowCount();
+        return $stm->fetchAll();
+    }
+
+    public function rawExec($statement)
+    {
+        return parent::exec($statement);
+    }
+
+
+    public function value(string $statement, array $params = []){
+        $stm = $this->prepare($statement);
+        $stm->execute($params);
+        return $stm->fetchColumn();
+    }
+
+
     public function setTablePrefix($prefix){
         $this->tablePrefix = $prefix;
     }
@@ -72,7 +112,8 @@ class ZPDO extends PDO
         return $sql;
     }
 
-    public function quoteColumn($columnName) {
+    public function quoteColumn($columnName): string
+    {
         $colAlias = explode('.', $columnName);
         if (is_array($colAlias) && count($colAlias) == 2) {
             return $this->quoteColumn($colAlias[0]) . '.' . $this->quoteColumn($colAlias[1]);
@@ -90,7 +131,8 @@ class ZPDO extends PDO
         }
     }
 
-    public function quoteTable($table) {
+    public function quoteTable($table): string
+    {
         $table = $this->tablePrefix . $table;
         switch ($this->driver) {
             case 'mysql':
@@ -98,7 +140,7 @@ class ZPDO extends PDO
                 return '`' . $table . '`';
             case 'mssql':
                 return "[$table]";
-            case 'pssql':
+            case 'pgsql':
                 return '"' . $table . '"';
             default:
                 return $table;
@@ -138,7 +180,8 @@ class ZPDO extends PDO
         return $this->getAttribute(PDO::ATTR_AUTOCOMMIT);
     }
 
-    public function buildParams($array,$name){
+    public function buildParams($array,$name): array
+    {
         $params = [];
         $values = [];
         for($i = 0;$i<count($array);$i++){

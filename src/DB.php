@@ -19,10 +19,14 @@ use zap\util\Arr;
  * @method static int count($table, $conditions = '', $params = array())
  * @method static keyPair($table, $columns, $conditions = '', $params = array())
  * @method static int rowCount()
+ * @method static mixed value(string $statement, array $params = [])
  * @method static string toSnakeCase($name)
  * @method static string prepareSQL($sql)
- * @method static quoteColumn($columnName)
- * @method static quoteTable($table)
+ * @method static string quoteColumn($columnName)
+ * @method static string quoteTable($table)
+ * @method static false|\PDOStatement prepare($query, $options = [])
+ * @method static array|false select($query, $params = [], ...$fetch_mode_args)
+ * @method static false|\PDOStatement query($query, $params = [], ...$fetch_mode_args)
  * @method static setFetchMode($mode)
  * @method static setAutoCommit($value)
  * @method static getAutoCommit()
@@ -100,57 +104,6 @@ class DB
         return $pdo->quote($value);
     }
 
-    /**
-     * 预处理SQL
-     * @param string $statement
-     * @param array $options
-     * @return false|\PDOStatement
-     * @throws Exception
-     */
-    public static function prepare(string $statement, array $options = [])
-    {
-        $pdo = static::connect(static::$default_name);
-        return $pdo->prepare($pdo->prepareSQL($statement),$options);
-    }
-
-    /**
-     * 执行SQL
-     * @param string $statement
-     * @return false|int
-     * @throws Exception
-     */
-    public static function exec(string $statement)
-    {
-        $pdo = static::connect(static::$default_name);
-        return $pdo->exec($pdo->prepareSQL($statement));
-    }
-
-    /**
-     * query
-     * @param string $statement
-     * @param array $params
-     * @return false|\PDOStatement
-     * @throws Exception
-     */
-    public static function query(string $statement, array $params = [])
-    {
-        $stm = static::prepare($statement);
-        $stm->execute($params);
-        return $stm;
-    }
-
-    /**
-     * value
-     * @param string $statement
-     * @param array $params
-     * @return mixed
-     * @throws Exception
-     */
-    public static function value(string $statement, array $params = []){
-        $stm = static::prepare($statement);
-        $stm->execute($params);
-        return $stm->fetchColumn();
-    }
 
     /**
      * getAll
