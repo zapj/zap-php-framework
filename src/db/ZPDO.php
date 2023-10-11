@@ -21,14 +21,13 @@ class ZPDO extends PDO
         $this->tablePrefix = $config['prefix'] ?? '';
         $this->driver = $config['driver'] ?? 'mysql';
         $dsn = $config['dsn'] ?? $this->buildDSN($config);
-        $username = $config['username'] ?? null;
+        $username = $config['user'] ?? null;
         $password = $config['password'] ?? null;
         $options  = array(
             PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ,
             PDO::ATTR_EMULATE_PREPARES   => FALSE,
         );
-
         if($this->driver == 'mysql'){
             $db_charset = $config['charset'] ?? 'utf8';
             $db_collate = $config['collate'] ?? null;
@@ -36,7 +35,6 @@ class ZPDO extends PDO
         }
         $options += Arr::get($config,'options',[]);
         parent::__construct($dsn, $username, $password, $options);
-
         $this->setAttribute(PDO::ATTR_STATEMENT_CLASS,[Statement::class]);
     }
 
@@ -45,11 +43,12 @@ class ZPDO extends PDO
         $dsnElements = [];
         switch ($this->driver){
             case 'mysql':
+            case 'mariadb':
                 $dsnElements = Arr::find($config,['host','port','dbname','unix_socket','charset']);
                 break;
             case 'pgsql':
                 $dsnElements = Arr::find($config,['host','port','dbname','user','password','sslmode']);
-                unset($config['username'],$config['password']);
+                unset($config['user'],$config['password']);
                 break;
             case 'sqlite':
                 trigger_error('Please directly set the DSN parameters',E_USER_ERROR);
