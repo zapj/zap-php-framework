@@ -260,8 +260,7 @@ class App implements \ArrayAccess
     /**
      * @throws Exception
      */
-    public function make($class , $args = [] , $alias_name = null){
-        $object = null;
+    public function make($class , $args = [] , $alias = null){
         try{
             $instance = new ReflectionClass($class);
             $constructMethod = $instance->getConstructor();
@@ -277,7 +276,7 @@ class App implements \ArrayAccess
             }else{
                 $object = $instance->newInstance();
             }
-            $this->offsetSet($alias_name ?? $class,$object);
+            $this->offsetSet($alias ?? $class,$object);
 
         }catch (\ReflectionException $e){
             throw new Exception("App::make Instance initialization failed,Error:{$e->getMessage()}");
