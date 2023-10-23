@@ -45,11 +45,14 @@ class Query
      */
     protected $db;
 
+    public $driver;
+
     /**
      * @throws Exception
      */
     public function __construct($zPDO = null) {
         $this->db = $zPDO ?: DB::connect();
+        $this->driver = $this->db->driver;
     }
 
     public function asArray(): Query
@@ -659,4 +662,6 @@ class Query
         }
         return $this->db->delete($table, $conditions, $params);
     }
+
+
 }
