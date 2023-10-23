@@ -520,4 +520,14 @@ class ZPDO extends PDO
     }
 
 
+    /**
+     * @return mixed|string
+     */
+    public function getDriver()
+    {
+        return $this->driver;
+    }
+
+
+
 }
