@@ -43,6 +43,7 @@ class ZArray implements IteratorAggregate, ArrayAccess, Serializable, Countable
      * <b>Traversable</b>
      * @throws Exception on failure.
      */
+    #[\ReturnTypeWillChange]
     public function getIterator()
     {
         return new ArrayIterator($this->elements);
@@ -92,6 +93,7 @@ class ZArray implements IteratorAggregate, ArrayAccess, Serializable, Countable
      *
      * @return mixed Can return all value types.
      */
+    #[\ReturnTypeWillChange]
     public function &offsetGet($offset)
     {
         $ret = null;
@@ -125,7 +127,7 @@ class ZArray implements IteratorAggregate, ArrayAccess, Serializable, Countable
      *
      * @return void
      */
-    public function offsetSet($offset, $value)
+    public function offsetSet($offset, $value) : void
     {
         $keys = explode('.', $offset);
         $array = &$this->elements;
