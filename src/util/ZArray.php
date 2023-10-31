@@ -25,7 +25,7 @@ class ZArray implements IteratorAggregate, ArrayAccess, Serializable, Countable
 
     public function __set($key, $value)
     {
-        return $this->offsetSet($key, $value);
+        $this->offsetSet($key, $value);
     }
 
     public function &__get($key)
@@ -62,7 +62,7 @@ class ZArray implements IteratorAggregate, ArrayAccess, Serializable, Countable
      * <p>
      * The return value will be casted to boolean if non-boolean was returned.
      */
-    public function offsetExists($offset)
+    public function offsetExists($offset): bool
     {
         if (is_null($offset)) {
             return false;
@@ -127,10 +127,6 @@ class ZArray implements IteratorAggregate, ArrayAccess, Serializable, Countable
      */
     public function offsetSet($offset, $value)
     {
-        if (is_null($offset)) {
-            return ;
-        }
-
         $keys = explode('.', $offset);
         $array = &$this->elements;
         while (count($keys) > 1) {
@@ -141,10 +137,6 @@ class ZArray implements IteratorAggregate, ArrayAccess, Serializable, Countable
             $array = &$array[$key];
         }
         $array[array_shift($keys)] = $value;
-//        print_r($array);
-//        $this->elements[array_shift($keys)] = $value;
-
-//        $this->elements[$offset] = $value;
     }
 
     /**
@@ -158,7 +150,8 @@ class ZArray implements IteratorAggregate, ArrayAccess, Serializable, Countable
      *
      * @return void
      */
-    public function offsetUnset($offset)
+    #[\ReturnTypeWillChange]
+    public function offsetUnset($offset): void
     {
         if ($this->offsetExists($offset)) {
             unset($this->elements[$offset]);
@@ -172,7 +165,7 @@ class ZArray implements IteratorAggregate, ArrayAccess, Serializable, Countable
      * @return string|null The string representation of the object or null
      * @throws Exception Returning other type than string or null
      */
-    public function serialize()
+    public function serialize(): ?string
     {
         return serialize(get_object_vars($this));
     }
@@ -192,6 +185,17 @@ class ZArray implements IteratorAggregate, ArrayAccess, Serializable, Countable
         $this->elements = $ar['elements'];
     }
 
+    public function __serialize(): string
+    {
+        return serialize(get_object_vars($this));
+    }
+
+    public function __unserialize($data): void
+    {
+        $ar = unserialize($data);
+        $this->elements = $ar['elements'];
+    }
+
     /**
      * Count elements of an object
      *
@@ -201,7 +205,8 @@ class ZArray implements IteratorAggregate, ArrayAccess, Serializable, Countable
      * The return value is cast to an integer.
      * </p>
      */
-    public function count(){
+    #[\ReturnTypeWillChange]
+    public function count() : int {
         return count($this->elements);
     }
 
@@ -214,10 +219,11 @@ class ZArray implements IteratorAggregate, ArrayAccess, Serializable, Countable
     }
 
     public function set($key,$value){
-        return $this->offsetSet($key,$value);
+        $this->offsetSet($key,$value);
     }
 
-    public function has($key){
+    public function has($key): bool
+    {
         return $this->offsetExists($key);
     }
 
