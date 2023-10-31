@@ -185,7 +185,7 @@ class ZArray implements IteratorAggregate, ArrayAccess, Serializable, Countable
         $this->elements = $ar['elements'];
     }
 
-    public function __serialize(): string
+    public function __serialize()
     {
         return serialize(get_object_vars($this));
     }
