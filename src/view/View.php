@@ -51,12 +51,30 @@ class View {
         static::$globalData[$name] = $value;
     }
 
+    public static function set($name,$value){
+        static::$globalData[$name] = $value;
+    }
+
     public static function paths($path = null): array
     {
         if($path != null){
             array_unshift(static::$templatePaths,$path);
         }
         return static::$templatePaths;
+    }
+
+    public static function getPath(): array
+    {
+        return static::$templatePaths;
+    }
+
+    public static function addPath($path = null,$append = false): void
+    {
+        if(!$append){
+            array_unshift(static::$templatePaths,$path);
+        }else{
+            static::$templatePaths[] = $path;
+        }
     }
 
     public function __get($name)
@@ -103,14 +121,6 @@ class View {
         return $this->blocks[$name] ?? '';
     }
 
-    public function addPath($path): View
-    {
-        if($path != null){
-            array_unshift(static::$templatePaths,$path);
-        }
-        return $this;
-    }
-
     public function beginBlock($name) {
         ob_start();
         $this->_blocksStack[] = $name;
@@ -126,14 +136,15 @@ class View {
         return new View($name,$data);
     }
 
-    public function display($return = false){
-        return $this->engine->render($return);
+    public function display($output = false){
+        return $this->engine->render($output);
     }
 
     /**
      * @throws ViewNotFoundException
      */
-    private function prepare($name){
+    private function prepare($name): void
+    {
         $this->viewFile = $this->resolveTemplate($name);
         if(is_null($this->viewFile)){
             throw new ViewNotFoundException('Template file not found , File name:'.$name);
@@ -141,15 +152,15 @@ class View {
         $this->initViewRenderer();
     }
 
-    private function resolveTemplate($template)
+    private function resolveTemplate($template): ?string
     {
         $template = str_replace('.','/',$template);
         foreach(static::$templatePaths as $tplPath){
-            $tplFullPath = $tplPath . '/' . $template .'.php';
+            $tplFullPath = "{$tplPath}/{$template}.php";
             if(is_file($tplFullPath)){
                 return $tplFullPath;
             }
-            $tplFullPath = $tplPath . '/' . $template .'.twig';
+            $tplFullPath = "{$tplPath}/{$template}.twig";
             if(is_file($tplFullPath)){
                 return $tplFullPath;
             }
@@ -162,23 +173,23 @@ class View {
      * 渲染模板
      * @param string $template 模板路径
      * @param array $data 参数
-     * @param bool $return 返回View内容
+     * @param bool $output 返回View内容
      * @return string|null
      */
-    public static function render(string $template, array $data = [], bool $return = false): ?string
+    public static function render(string $template, array $data = [], bool $output = false): ?string
     {
         $view = View::make($template,$data);
 
-        return $view->display($return);
+        return $view->display($output);
     }
 
-    private function initViewRenderer(){
+    private function initViewRenderer(): void
+    {
         if(Str::endsWith($this->viewFile,'.twig')){
             $this->engine = new TwigViewRenderer($this);
         }else{
             $this->engine = new PHPRenderer($this);
         }
-        event_fire('config/event/view',$this->engine);
     }
 
 }
