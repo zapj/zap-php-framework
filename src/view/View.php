@@ -38,7 +38,7 @@ class View {
         if(($theme = config('config.theme',false)) !== false){
             array_unshift(static::$templatePaths,themes_path("$theme"));
         }else{
-            array_unshift(static::$templatePaths,resource_path('views'));
+            array_unshift(static::$templatePaths,base_path('app/views'));
         }
         if(config('config.set_theme_include_path',false) === false){
             set_include_path(get_include_path() . PATH_SEPARATOR .  join(PATH_SEPARATOR,static::$templatePaths));
@@ -114,7 +114,6 @@ class View {
     public function beginBlock($name) {
         ob_start();
         $this->_blocksStack[] = $name;
-        echo $name;
     }
 
     public function endBlock() {
@@ -128,7 +127,6 @@ class View {
     }
 
     public function display($return = false){
-        Block::$view = $this;
         return $this->engine->render($return);
     }
 
@@ -180,6 +178,7 @@ class View {
         }else{
             $this->engine = new PHPRenderer($this);
         }
+        event_fire('config/event/view',$this->engine);
     }
 
 }

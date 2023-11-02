@@ -35,7 +35,6 @@ class PHPRenderer extends ViewRenderer
         extract(View::$globalData, EXTR_SKIP);
         try {
             if(!is_file($template)){
-                //                throw new Exception("Template File: {$template} not found");
                 trigger_error("Template File: {$template} not found",E_USER_ERROR);
             }
             include $template;
