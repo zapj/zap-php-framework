@@ -229,7 +229,7 @@ class Image
     public function save($file, $quality = 90)
     {
         $ret = false;
-        if (is_resource($this->image)) {
+        if ($this->image) {
             if ($this->extName == 'jpeg' || $this->extName == 'jpg') {
                 $ret = imagejpeg($this->image, $file, $quality);
             } elseif ($this->extName == 'png') {
