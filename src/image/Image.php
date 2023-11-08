@@ -570,4 +570,12 @@ class Image
         return $this->mimeType;
     }
 
+    /**
+     * @return string
+     */
+    public function getExtName(): string
+    {
+        return $this->extName;
+    }
+
 }
