@@ -80,7 +80,7 @@ class Pagination
         }
         if($this->displayTotal){
             $html .= '<li class="' . $li_class .' " style="width: 17px"></li>';
-            $html .= '<li class="' . $li_class .' " style="width: 17px"><span class="page-link" style="color: #ccc;">总行数:'.$this->total.' 总页数:'.$last.'</span></li>';
+            $html .= '<li class="' . $li_class .' " ><span class="page-link" style="color: #ccc;">Total:'.$this->total.'行/'.$last.'页</span></li>';
         }
         $html .= '</ul></nav>';
 
