@@ -25,7 +25,7 @@ class Input {
                 $nextIsFlag = Str::startsWith($next,'-');
                 if($nextIsFlag){
                     $this->params[trim($current,' -')] = true;
-                    $this->params[trim($next,' -')] = true;
+                    array_unshift($argv,$next);
                 }else{
                     $this->params[trim($current,' -')] = $next ?? true;
                 }
