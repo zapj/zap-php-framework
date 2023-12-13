@@ -6,9 +6,7 @@ class Output {
     private $stdout;
     private $stderr;
     private Input $input;
-    protected bool $verbose1 = false;
-    protected bool $verbose2 = false;
-    protected bool $verbose3 = false;
+    protected int $verbose = 0;
 
     public function __construct(Input $input)
     {
@@ -16,14 +14,20 @@ class Output {
         $this->stderr = $this->openErrorStream();
         $this->input = $input;
 
-        $this->verbose1 = $this->input->hasParam('v');
-
-        if($this->input->hasParam('vv')){
-            $this->verbose1 = $this->verbose2 = true;
+        $this->verbose = $this->input->hasParam('v') ? 1 : 0;
+        if($this->input->hasParam('v')){
+            $this->verbose = 1;
+        }else if($this->input->hasParam('vv')){
+            $this->verbose = 2;
         }
         if($this->input->hasParam('vvv')){
-            $this->verbose1 = $this->verbose2 = $this->verbose3 = true;
+            $this->verbose = 3;
         }
+    }
+
+    public function getVerbose(): int
+    {
+        return $this->verbose;
     }
 
     /**
@@ -82,7 +86,7 @@ class Output {
 
     public function printlnV($fmt,...$args): int
     {
-        if($this->verbose1){
+        if($this->verbose === 1){
             return fprintf($this->stdout,$fmt . PHP_EOL ,$args);
         }
         return 0;
@@ -90,7 +94,7 @@ class Output {
 
     public function printlnVV($fmt,...$args): int
     {
-        if($this->verbose2){
+        if($this->verbose === 2){
             return fprintf($this->stdout,$fmt . PHP_EOL ,$args);
         }
         return 0;
@@ -98,7 +102,7 @@ class Output {
 
     public function printlnVVV($fmt,...$args): int
     {
-        if($this->verbose3){
+        if($this->verbose === 3){
             return fprintf($this->stdout,$fmt . PHP_EOL ,$args);
         }
         return 0;
