@@ -6,17 +6,18 @@ use zap\util\Str;
 
 class Input {
     private $argv;
-    protected $params = [];
+    protected array $params = [];
 
     public function __construct($argv = null)
     {
         $argv = $_SERVER['argv'] ?? [];
         array_shift($argv);
-        $this->argv = $argv;
+        $this->argv = $argv ?? [];
         $this->parseArgs();
     }
 
-    protected function parseArgs(){
+    protected function parseArgs(): void
+    {
         $argv = $this->argv;
         while($current = array_shift($argv)){
             if(Str::startsWith($current,'-')){
@@ -45,19 +46,27 @@ class Input {
     }
 
     /**
-     * @param array|mixed $argv
+     * @param array $argv
      */
-    public function setArgv($argv): void
+    public function setArgv(array $argv): void
     {
         $this->argv = $argv;
     }
 
     /**
-     * @return array|mixed
+     * @return array
      */
-    public function getArgv()
+    public function getArgv(): array
     {
         return $this->argv;
+    }
+
+    /**
+     * @return array
+     */
+    public function getParams(): array
+    {
+        return $this->params;
     }
 
 
