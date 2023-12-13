@@ -23,7 +23,12 @@ class Input {
             if(Str::startsWith($current,'-')){
                 $next = array_shift($argv);
                 $nextIsFlag = Str::startsWith($next,'-');
-                $this->params[trim($current,' -')] = $nextIsFlag ? true : ($next ?? true);
+                if($nextIsFlag){
+                    $this->params[trim($current,' -')] = true;
+                    $this->params[trim($next,' -')] = true;
+                }else{
+                    $this->params[trim($current,' -')] = $next ?? true;
+                }
             }else{
                 $this->params[] = $current;
             }
