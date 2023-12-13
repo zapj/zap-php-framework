@@ -4,7 +4,7 @@ namespace zap\console;
 
 use zap\util\Str;
 
-class Args {
+class Input {
     private $argv;
     protected $params = [];
 
