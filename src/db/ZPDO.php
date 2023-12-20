@@ -32,7 +32,7 @@ class ZPDO extends PDO
         if($this->driver === 'mysql'){
             $db_charset = $config['charset'] ?? 'utf8';
             $db_collate = $config['collate'] ?? null;
-            $options[PDO::MYSQL_ATTR_INIT_COMMAND] = "SET NAMES {$db_charset} " . (is_null($db_collate) ?'': " COLLATE $db_collate");
+            $options[PDO::MYSQL_ATTR_INIT_COMMAND] = "SET NAMES '{$db_charset}' " . (is_null($db_collate) ?'': " COLLATE '{$db_collate}'");
         }
         $options += Arr::get($config,'options',[]);
         parent::__construct($dsn, $username, $password, $options);
