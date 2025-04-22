@@ -8,4 +8,9 @@ class Html
     {
 
     }
+
+    public static function create($tagName, $attributes = []) : Element {
+        return new Element($tagName, $attributes);
+    }
+
 }

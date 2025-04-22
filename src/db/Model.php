@@ -6,6 +6,10 @@ use zap\DB;
 use zap\util\Arr;
 use zap\util\Str;
 
+
+/**
+ * @method static select(string $tableName)
+ */
 abstract class Model implements \ArrayAccess
 {
     protected $autoincrement = true;
@@ -447,7 +451,7 @@ abstract class Model implements \ArrayAccess
         return static::getDefaultTableName();
     }
 
-    public static function primaryKey()
+    public static function primaryKey(): string
     {
         return 'id';
     }
