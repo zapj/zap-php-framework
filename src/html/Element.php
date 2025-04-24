@@ -14,13 +14,15 @@ class Element
 {
 
     public string $tag;
+    public $html;
     public $attributes;
     public $children;
 
 
-    public function __construct($tag, $attributes = []) {
+    public function __construct($tag, $attributes = [], $children = []) {
         $this->tag = $tag;
         $this->attributes = $attributes;
+        $this->children = $children;
     }
 
     public function getTag(): string {
@@ -49,5 +51,33 @@ class Element
 
     public function addChild(Element $child): void {
         $this->children[] = $child;
+    }
+
+    /**
+     * @param string|null|Element $html
+     */
+    public function html($html): Element
+    {
+        $this->html = $html;
+        return $this;
+    }
+
+    public function __toString() {
+        $element = '<' . $this->tag;
+        if($this->attributes) {
+            foreach ($this->attributes as $name => $value) {
+                $element .= ' ' . $name . '="' . $value . '"';
+            }
+        }
+        if($this->html){
+            $element .= '>' . $this->html . '</' . $this->tag . '>';
+        }else if(in_array($this->tag,['a','li','ul','ol','h1','h2','h3','h4','h5','h6'])) {
+            $element .= '></' . $this->tag . '>';
+        } else if($this->tag == 'form'){
+            $element .= '>';
+        }else{
+            $element .= '/>';
+        }
+        return $element;
     }
 }
