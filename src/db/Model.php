@@ -12,9 +12,9 @@ use zap\util\Str;
  */
 abstract class Model implements \ArrayAccess
 {
-    protected $autoincrement = true;
+    protected bool $autoincrement = true;
 
-    protected $attributes = array();
+    protected array $attributes = array();
 
     protected $connection;
 
@@ -451,7 +451,7 @@ abstract class Model implements \ArrayAccess
         return static::getDefaultTableName();
     }
 
-    public static function primaryKey(): string
+    public static function primaryKey()
     {
         return 'id';
     }
