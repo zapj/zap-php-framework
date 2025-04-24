@@ -12,7 +12,7 @@ use zap\util\Str;
  */
 abstract class Model implements \ArrayAccess
 {
-    protected bool $autoincrement = true;
+    protected $autoincrement = true;
 
     protected array $attributes = array();
 
