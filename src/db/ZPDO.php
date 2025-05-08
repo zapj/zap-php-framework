@@ -529,13 +529,14 @@ class ZPDO extends PDO
         return parent::quote($value, $type);
     }
 
-    public function getTables(){
+    public function getTables(): array
+    {
         $tables = [];
         if($this->driver === 'sqlite'){
             $tables = $this->query("SELECT name FROM sqlite_master WHERE type='table' AND 
-    name NOT LIKE 'sqlite_%'")->fetchColumn();
+    name NOT LIKE 'sqlite_%'")->fetchAll(FETCH_COLUMN);
         }else if($this->driver === 'mysql'){
-            $tables = $this->query("SHOW TABLES")->fetchColumn();
+            $tables = $this->query("SHOW TABLES")->fetchAll(FETCH_COLUMN);
         }
         return $tables;
     }
@@ -544,8 +545,17 @@ class ZPDO extends PDO
         if($this->driver === 'sqlite'){
             return $this->query("SELECT sql FROM sqlite_master where name='$table'")->fetchColumn();
         }else if($this->driver === 'mysql'){
-            $table = $this->quoteTable($table);
             $sql = 'SHOW CREATE TABLE ' . $table;
+            return $this->query($sql)->fetchColumn();
+        }
+        return '';
+    }
+
+    public function getTableColumns(string $table){
+        if($this->driver === 'sqlite'){
+            return $this->query("SELECT sql FROM sqlite_master where name='$table'")->fetchColumn();
+        }else if($this->driver === 'mysql'){
+            $sql = 'SHOW COLUMNS FROM ' . $table;
             return $this->query($sql)->fetchColumn();
         }
         return '';
