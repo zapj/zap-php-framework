@@ -82,7 +82,7 @@ class ZPDO extends PDO
         return $stm;
     }
 
-    public function select($query, $params = [], ...$fetch_mode_args)
+    public function select($query, $params = [], ...$fetch_mode_args): array
     {
         $stm = parent::query($this->prepareSQL($query), ...$fetch_mode_args);
         $stm->execute($params);
@@ -95,9 +95,9 @@ class ZPDO extends PDO
      * @param string $statement
      * @param array $params
      * @param null $fetchMode
-     * @return array|false
+     * @return array
      */
-    public function getAll(string $statement, array $params = [],$fetchMode = null)
+    public function getAll(string $statement, array $params = [],$fetchMode = null): array
     {
         $stm = $this->prepare($statement);
         $stm->execute($params);
@@ -124,6 +124,7 @@ class ZPDO extends PDO
      * @param string $table
      * @param string|null $alias
      * @return Query
+     * @throws \Exception
      */
     public function table(string $table, string $alias = null): Query
     {
@@ -528,7 +529,26 @@ class ZPDO extends PDO
         return parent::quote($value, $type);
     }
 
+    public function getTables(){
+        $tables = [];
+        if($this->driver === 'sqlite'){
+            $tables = $this->query("SELECT name FROM sqlite_master WHERE type='table' AND 
+    name NOT LIKE 'sqlite_%'")->fetchColumn();
+        }else if($this->driver === 'mysql'){
+            $tables = $this->query("SHOW TABLES")->fetchColumn();
+        }
+        return $tables;
+    }
 
-
+    public function getTableStructure(string $table){
+        if($this->driver === 'sqlite'){
+            return $this->query("SELECT sql FROM sqlite_master where name='$table'")->fetchColumn();
+        }else if($this->driver === 'mysql'){
+            $table = $this->quoteTable($table);
+            $sql = 'SHOW CREATE TABLE ' . $table;
+            return $this->query($sql)->fetchColumn();
+        }
+        return '';
+    }
 
 }

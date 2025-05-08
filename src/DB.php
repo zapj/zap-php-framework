@@ -139,4 +139,12 @@ class DB
         return Expr::make($value);
     }
 
+    /**
+     * @throws Exception
+     */
+    public static function getTables(string $connection = null) {
+        static::connect($connection)->query("SHOW TABLES");
+
+    }
+
 }
