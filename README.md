@@ -700,6 +700,211 @@ try {
 
 ---
 
+## 助手 (Helpers)
+
+框架内置分页和 URL 生成助手，可在控制器和视图中直接使用。
+
+### 分页器 (Pagination)
+
+面向 API 和内页渲染的分页组件，支持数组元数据输出和 HTML 分页条生成。
+
+#### 基本使用
+
+```php
+use zap\helpers\Pagination;
+
+// 创建分页实例（总数，每页条数，当前页）
+$p = new Pagination(200, 15, 1);
+
+// 静态工厂
+$p = Pagination::make(200, 15, 1);
+```
+
+#### 读取分页信息
+
+```php
+$p->currentPage();     // 当前页码
+$p->perPage();         // 每页条数
+$p->total();           // 总记录数
+$p->totalPages();      // 总页数
+$p->hasPages();        // 是否有多页
+$p->hasMorePages();    // 是否还有下一页
+$p->isFirstPage();     // 是否第一页
+$p->isLastPage();      // 是否最后一页
+$p->firstItem();       // 当前页第一条记录序号
+$p->lastItem();        // 当前页最后一条记录序号
+$p->offset();          // 数据库查询 offset
+```
+
+#### URL 生成
+
+```php
+// 设置基础路径
+$p->withPath('/posts');
+
+$p->url(3);              // /posts/3
+$p->previousPageUrl();   // /posts/2
+$p->nextPageUrl();       // /posts/4
+$p->firstPageUrl();      // /posts/1
+$p->lastPageUrl();       // /posts/14
+```
+
+#### API / JSON 元数据
+
+```php
+// 数组格式（for API response）
+$meta = $p->meta();
+// [
+//     'current_page'   => 1,
+//     'per_page'       => 15,
+//     'total'          => 200,
+//     'total_pages'    => 14,
+//     'from'           => 1,
+//     'to'             => 15,
+//     'has_more'       => true,
+//     'next_page_url'  => '/posts/2',
+//     'prev_page_url'  => '#',
+//     'first_page_url' => '/posts/1',
+//     'last_page_url'  => '/posts/14',
+// ]
+
+$json = $p->toJson();    // JSON 字符串
+```
+
+#### HTML 渲染
+
+```php
+// Bootstrap 5 风格（默认）
+echo $p->render();
+
+// 自定义前后标签
+echo $p->render('上一页', '下一页');
+
+// Bootstrap 4 兼容
+echo $p->renderBootstrap4();
+
+// 简易模式（仅上一页/下一页）
+echo $p->renderSimple();
+
+// 记录数统计
+echo $p->renderCount();  // 共 200 条，每页 15 条，当前第 1 / 14 页
+```
+
+#### 链式配置
+
+```php
+$p = Pagination::make(200)
+    ->withPath('/articles')
+    ->setPerPage(20)
+    ->setCurrentPage(3)
+    ->onEachSide(2)              // 当前页左右各显示 2 个页码
+    ->setClasses([               // 自定义 CSS 类名
+        'nav'      => 'my-pagination',
+        'active'   => 'is-active',
+        'disabled' => 'is-disabled',
+    ]);
+
+echo $p->render();
+```
+
+#### 自定义渲染
+
+```php
+$p->withRender(function($html, $pagination) {
+    return '<div class="custom-pager">' . $html . '</div>';
+});
+```
+
+### URL 助手 (UrlHelper)
+
+生成应用 URL，支持命名路由、控制器动作和安全连接。
+
+#### 基本使用
+
+```php
+use zap\facades\Url;
+
+// 基础 URL
+echo Url::base();        // http://localhost
+echo Url::base('https://example.com');  // 设置基础 URL
+
+// 首页
+echo Url::home();        // http://localhost
+
+// 完整 URL
+echo Url::full();        // http://localhost/users?id=1
+
+// 上一页（Referer）
+echo Url::previous();    // 上一页 URL，无 Referer 时回退到首页
+
+// 当前路径
+echo Url::current();     // /users
+```
+
+#### 命名路由
+
+```php
+// 定义路由
+Route::get('/user/{id}', 'UserController@show')->name('profile');
+
+// 生成 URL
+echo Url::route('profile', ['id' => 1]);            // /user/1
+echo Url::route('profile', ['id' => 2, 'tab' => 'posts']);  // /user/2?tab=posts
+
+// 绝对 URL
+echo Url::route('profile', ['id' => 1], true);      // http://localhost/user/1
+```
+
+#### 控制器动作
+
+```php
+echo Url::action('UserController@list');                    // /UserController@list
+echo Url::action('UserController@show', [], ['id' => 5]);   // /UserController@show?id=5
+```
+
+#### URL 格式化
+
+```php
+// 替换占位符
+echo Url::to('/user/{id}/edit', ['id' => 10]);       // /user/10/edit
+
+// 未匹配参数追加为查询串
+echo Url::to('/search', ['q' => 'php', 'page' => 2]); // /search?q=php&page=2
+
+// 未匹配参数作为路径段
+echo Url::to('/search', ['q' => 'php', 'page' => 2], false); // /search/php/2
+```
+
+#### 当前路由信息
+
+```php
+Url::controller();      // 当前控制器名
+Url::method();          // 当前方法名
+Url::getRouteData();    // 完整路由数据数组
+Url::getRouteData('profile');  // 指定命名路由的数据
+```
+
+#### 激活状态检测
+
+```php
+// 布尔检查
+if (Url::isActive('/admin*')) { /* 当前在后台 */ }
+
+// 返回 class 名
+<a class="<?= Url::isActive('/dashboard', 'nav-active') ?>">首页</a>
+
+// 兼容旧版（直接输出）
+Url::active('/admin*', 'class="active"');
+```
+
+#### 安全连接
+
+```php
+echo Url::secure('/admin/login');    // https://localhost/admin/login
+```
+
+---
+
 ## 数据库
 
 ### 配置
@@ -1256,10 +1461,28 @@ $console->setDefaultCommand(MyDefaultCommand::class);
 ## Facades
 
 ```php
-use zap\facades\Cache;   // 缓存
-use zap\facades\Date;    // 日期时间
-use zap\facades\Url;     // URL 生成
+use zap\facades\Cache;       // 缓存
+use zap\facades\Date;        // 日期时间
+use zap\facades\Url;         // URL 生成（UrlHelper）
 ```
+
+### URL Facade 速查
+
+| 方法 | 说明 | 示例 |
+|---|---|---|
+| `Url::base($url?)` | 获取/设置基础 URL | `Url::base('https://example.com')` |
+| `Url::home()` | 首页 URL | `Url::home()` |
+| `Url::full()` | 完整请求 URL（含协议主机路径） | `Url::full()` |
+| `Url::previous()` | 上一页 Referer | `Url::previous()` |
+| `Url::current()` | 当前请求 URI 路径 | `Url::current()` |
+| `Url::route($name, $params, $absolute)` | 命名路由 URL | `Url::route('profile', ['id' => 1])` |
+| `Url::action($action, $query, $path)` | 控制器动作 URL | `Url::action('UserController@show', [], ['id'=>5])` |
+| `Url::to($format, $params, $query)` | 格式化 URL | `Url::to('/user/{id}/edit', ['id'=>10])` |
+| `Url::isActive($action, $class?)` | 路由激活状态检测 | `Url::isActive('/admin*', 'nav-active')` |
+| `Url::secure($path)` | 生成 HTTPS URL | `Url::secure('/admin')` |
+| `Url::controller()` | 当前控制器名 | `Url::controller()` |
+| `Url::method()` | 当前方法名 | `Url::method()` |
+| `Url::getRouteData($name?)` | 路由数据 | `Url::getRouteData('profile')` |
 
 ---
 
@@ -1293,6 +1516,11 @@ json(['code' => 0]);            // JSON 响应
 dd($data);                      // dump & die
 env('APP_ENV', 'production');   // 环境变量
 value(function() { ... });      // 执行回调
+
+// 国际化（需先加载语言文件）
+__('welcome');                                 // 简单翻译
+__('user.greeting', ['name' => 'Zap']);        // 带参数翻译
+trans_choice('apples', 5);                     // 复数翻译
 
 // 字符串
 snake_case('HelloWorld');       // hello_world
