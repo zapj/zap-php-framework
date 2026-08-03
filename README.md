@@ -198,6 +198,115 @@ Router::setNotFound('ErrorController@notFound');
 | `Router::url($name, $params)` | 生成命名路由 URL |
 | `Router::setNotFound($handler)` | 404 处理器 |
 
+### 路由缓存
+
+编译路由并缓存，跳过每次请求的正则重建开销，显著提升路由分发性能。
+
+#### 自动模式（推荐）
+
+Router 自动读取 `config/cache.php` 中的 `default` 驱动创建缓存，**无需手动配置**：
+
+```php
+// config/route.php — 路由文件
+use zap\http\Router;
+
+$router = new Router();
+
+// 自动从 config/cache.php 读取驱动并尝试加载缓存
+if ($router->loadRoutesFromCache(__FILE__)) {
+    return $router;  // ✅ 缓存命中
+}
+
+// 注册路由（仅缓存未命中时执行）
+Route::get('/users', 'UserController@index');
+Route::get('/posts/{id:\d+}', 'PostController@show');
+Route::resource('articles', 'ArticleController');
+// ...
+
+// 写入缓存（下次请求直接命中）
+$router->cacheRoutes(__FILE__);
+return $router;
+```
+
+#### config/cache.php 配置
+
+```php
+return [
+    // 切换缓存驱动只需改这里：'file' | 'redis' | 'memcached' | 'memcache'
+    'default' => 'redis',
+
+    'file' => [
+        'path' => VAR_PATH . '/cache',
+    ],
+
+    'redis' => [
+        'params' => ['127.0.0.1', 6379],
+    ],
+
+    'memcached' => [
+        'driver'  => 'memcached',
+        'servers' => [['host' => '127.0.0.1', 'port' => 11211]],
+    ],
+
+    'status' => 'enabled',
+];
+```
+
+#### 手动指定驱动
+
+如需覆盖默认配置，可显式传入缓存驱动：
+
+```php
+use zap\cache\RedisCache;
+use zap\cache\MemcacheCache;
+
+// Redis
+Router::setCacheDriver(new RedisCache(['params' => ['10.0.0.5', 6380]]));
+
+// Memcached
+Router::setCacheDriver(new MemcacheCache([
+    'driver'  => 'memcached',
+    'servers' => [['host' => '192.168.1.10', 'port' => 11211]],
+]));
+
+// 文件缓存（指定路径）
+Router::setCachePath('/data/cache/routes');
+```
+
+#### 缓存管理
+
+```php
+// 手动清除缓存（部署脚本中常用）
+Router::clearRouteCache();
+
+// 查看缓存状态
+$info = Router::getCacheInfo();
+// [
+//     'driver'       => 'redis',
+//     'cache_key'    => 'zap.routes.cache',
+//     'cached'       => true,
+//     'routes_count' => 42,
+// ]
+```
+
+#### 缓存失效
+
+- 传入的 `__FILE__`（路由文件自身）的 **修改时间** 参与 hash 计算
+- 路由文件一旦保存，缓存自动失效，下次请求重新编译
+- 多个依赖文件可传入 `$router->cacheRoutes(__FILE__, 'path/to/helpers.php', 'path/to/auth.php')`
+
+#### 限制
+
+闭包路由不可缓存。必须使用 `'Controller@method'` 字符串语法：
+
+```php
+// ❌ 不可缓存
+Route::get('/api', function() { return json(['ok' => true]); });
+
+// ✅ 可缓存
+Route::get('/api', 'ApiController@status');
+```
+
 ---
 
 ## 控制器
