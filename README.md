@@ -234,6 +234,196 @@ session()->getFlash('type');
 
 ---
 
+## 验证器
+
+内置灵活的数据验证组件，支持链式调用、嵌套字段、自定义规则和自定义错误消息。
+
+### 基本使用
+
+```php
+use zap\validator\Validator;
+
+// 方式一：静态工厂（默认从 $_GET/$_POST 读取数据）
+$v = Validator::make()
+    ->rule('required', ['name', 'email'])
+    ->rule('email', 'email')
+    ->rule('integer', 'age')
+    ->rule('between', 'age', [1, 120])
+    ->setLabels(['name' => '姓名', 'email' => '邮箱', 'age' => '年龄']);
+
+if ($v->validate()) {
+    $data = $v->getValidData();  // 验证通过的数据
+} else {
+    $errors = $v->firstOfAll();  // 每个字段的第一个错误
+}
+
+// 方式二：手动传入数据
+$v = Validator::make($_POST)->rule('required', 'username')->validate();
+```
+
+### 链式配置 API
+
+```php
+$v = Validator::make($data)
+    // 添加规则：rule(规则名, 字段, [参数])
+    ->rule('required', ['title', 'content'])
+    ->rule('max', 'title', 100)
+    ->rule('in', 'status', ['draft', 'published', 'archived'])
+
+    // 自定义错误消息
+    ->messages([
+        'title.required' => '请输入文章标题',
+        'title.max'      => '标题不能超过 :param 个字符',
+    ])
+
+    // 字段标签（用于错误消息中的 {field} 占位）
+    ->setLabels([
+        'title'   => '标题',
+        'content' => '内容',
+        'status'  => '状态',
+    ])
+
+    // 字段级遇错停检（title 的第一个规则失败后跳过其余 title 规则）
+    ->bail('title')
+
+    // 可空字段（值为空时跳过除 required 以外的规则）
+    ->nullable('avatar')
+
+    // 全局遇第一个错误立即停止
+    ->stopOnFirstFailure()
+
+    // 验证后回调
+    ->after(function($v) {
+        if ($v->passes()) {
+            // 后置处理，如数据清洗
+        }
+    })
+
+    // 注册自定义规则命名空间
+    ->addNamespace('App\\Validators');
+```
+
+### 获取结果
+
+```php
+$v = Validator::make($data)->rule('required', 'name');
+
+$v->validate();           // 执行验证，返回 bool
+$v->fails();              // 是否失败
+$v->passes();             // 是否通过
+$v->getValidData();       // 通过验证的数据数组
+$v->get('name');          // 获取单个通过验证的值
+$v->errors();             // 所有错误 ['field' => ['rule' => 'message']]
+$v->firstOfAll();         // 每字段第一个错误 ['field' => 'message']
+$v->error('name');        // 指定字段的第一个错误（字符串）
+$v->error('name', true);  // 指定字段的所有错误（数组）
+$v->validated();          // 通过返回数据，失败抛出 RuntimeException
+$v->reset();              // 重置验证器状态
+```
+
+### 嵌套字段 & 通配符
+
+```php
+// 点号分隔嵌套字段
+$data = ['user' => ['name' => 'Zap', 'email' => 'a@b.com']];
+$v = Validator::make($data)
+    ->rule('required', 'user.name')
+    ->rule('email', 'user.email');
+
+// 通配符匹配数组子项
+$data = ['items' => [
+    ['name' => '商品A', 'price' => 100],
+    ['name' => '商品B', 'price' => 200],
+]];
+$v = Validator::make($data)
+    ->rule('required', 'items.*.name')
+    ->rule('integer', 'items.*.price');
+```
+
+### 可用规则一览
+
+| 规则 | 说明 | 参数示例 |
+|------|------|----------|
+| `required` | 字段必填 | 无 |
+| `required_with` | 指定的其他字段有值时必填 | `['other_field']` |
+| `email` | 有效邮箱地址 | 无 |
+| `url` | 有效 URL | 无 |
+| `domain` | 有效域名 | 无 |
+| `ip` | 有效 IP 地址（v4/v6） | 无 |
+| `ipv4` | 有效 IPv4 地址 | 无 |
+| `ipv6` | 有效 IPv6 地址 | 无 |
+| `integer` | 整数 | 无 |
+| `double` | 浮点数 | 无 |
+| `numeric` | 数字（整数或浮点） | 无 |
+| `boolean` | 布尔值（支持 0/1/true/false/yes/no/on/off） | 无 |
+| `alpha` | 纯字母 (a-z) | 无 |
+| `alpha_num` | 字母 + 数字 | 无 |
+| `ascii` | 纯 ASCII 字符 | 无 |
+| `min` | 数值最小值 | `10` |
+| `max` | 数值最大值 | `100` |
+| `between` | 数值范围 | `[1, 120]` |
+| `length` | 字符串长度范围 | `[6, 20]` |
+| `length_min` | 字符串最小长度 | `6` |
+| `length_max` | 字符串最大长度 | `20` |
+| `range_length` | 字符串长度范围（Length 别名） | `[6, 20]` |
+| `in` | 值必须在列表中 | `['admin', 'editor']` |
+| `not_in` | 值不能在列表中 | `['root', 'super']` |
+| `regex` | 正则匹配 | `'/^\d{6}$/'` |
+| `date` | 有效日期（默认 Y-m-d） | `'Y-m-d H:i:s'` |
+| `date_format` | 日期格式（Date 别名） | `'d/m/Y'` |
+| `json` | 合法 JSON 字符串 | `'array'` / `'object'` |
+| `confirmed` | 字段与 `{field}_confirmation` 一致 | 无 |
+| `same` | 与指定字段值相同 | `'email'` |
+| `different` | 与指定字段值不同 | `'old_password'` |
+| `distinct` | 数组值唯一无重复 | 无 |
+| `is_array` | 必须为数组 | 无 |
+| `callback` | 自定义验证函数或类 | `function($name, $value) { ... }` |
+
+### Callback 规则
+
+```php
+// 闭包方式
+$v = Validator::make($data)
+    ->rule('callback', 'custom_field', function($name, $value) {
+        return $value === 'expected_value';
+    });
+
+// 类方式（需实现 check($name, $value) 方法）
+$v = Validator::make($data)
+    ->rule('callback', 'custom_field', MyValidationRule::class);
+```
+
+### 扩展自定义规则
+
+```php
+// 1. 创建规则类
+namespace App\Validators;
+
+use zap\validator\AbstractRule;
+
+class Mobile extends AbstractRule
+{
+    public function validate($name, $value)
+    {
+        return preg_match('/^1[3-9]\d{9}$/', $value) === 1;
+    }
+
+    public function translateMsgKey()
+    {
+        return 'rule_mobile';  // 语言文件中的 key
+    }
+}
+
+// 2. 运行时注册命名空间
+$v = Validator::make($data)
+    ->addNamespace('App\\Validators')
+    ->rule('mobile', 'phone');
+```
+
+> 框架查找规则时，先搜索内置的 `zap\validator\rules`，再搜索通过 `addNamespace()` 注册的自定义命名空间。
+
+---
+
 ## 数据库
 
 ### 配置
