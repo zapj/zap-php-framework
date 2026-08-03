@@ -1830,25 +1830,213 @@ echo Html::form('/login', 'POST')
 
 ---
 
-## 国际化 i18n
+## 照片处理 (Image)
+
+基于 PHP GD 扩展的图片处理组件，支持链式调用、格式转换、滤镜、水印和 EXIF 自动旋转。
+
+> 需要 PHP GD 扩展。JPEG/PNG/GIF 为 GD 内置支持，WebP 需要 GD 编译时启用。
+
+### 基本使用
 
 ```php
-// 加载语言文件
-\zap\i18n\Language::loadApp('zh-cn');
+use zap\image\Image;
 
-// 翻译
-echo __('welcome');                          // 欢迎
-echo __('user.greeting', ['name' => 'Zap']); // 你好 Zap
+// 加载图片
+$img = new Image('/path/to/photo.jpg');
+// 或静态工厂
+$img = Image::from('/path/to/photo.jpg');
+
+// 空白画布
+$canvas = Image::canvas(800, 600, 'FFFFFF', 'png');
 ```
 
-语言文件示例 (`app/lang/zh-cn.php`)：
+### 缩放 & 裁剪
+
 ```php
-return [
-    'welcome' => '欢迎',
-    'user' => [
-        'greeting' => '你好 :name',
-    ],
-];
+// 缩放：传入宽或高之一即可等比缩放
+$img->resize(800);               // 固定宽度，高度等比
+$img->resize(null, 600);         // 固定高度，宽度等比
+$img->resize(800, 600);          // 同时指定宽高
+
+// 等比缩放（不留白）
+$img->fit(400, 300);             // 按短边适配，决不超出目标范围
+$img->fit(400, 300, true);       // 第三个参数 true 允许放大
+
+// 居中裁剪（fill/cover）
+$img->fill(400, 300);            // 缩放后居中裁剪
+$img->thumb(400, 300, 'top');    // 锚点裁剪：center/top/bottom/left/right/top-left 等
+
+// 正方形裁剪
+$img->square(300);               // 按短边出 300x300
+$img->square(300, 'top-left');   // 指定锚点
+
+// 矩形裁剪
+$img->crop(100, 100, 300, 300);
+
+// 画布扩展
+$img->resizeCanvas(800, 600, 'center', 'FFFFFF');
+```
+
+### 旋转 & 翻转
+
+```php
+$img->rotate(90);                // 顺时针旋转 90°
+$img->rotate(45, 'FF0000');      // 旋转并指定背景色
+
+$img->flip();                    // 水平翻转
+$img->flop();                    // 垂直翻转
+$img->flipBoth();                // 180° 翻转
+
+// 根据 EXIF Orientation 自动修正（手机竖拍纠正）
+$img->orient();
+```
+
+### 滤镜
+
+```php
+$img->grayscale();               // 灰度
+$img->invert();                  // 反色
+$img->brightness(30);            // 亮度 -255 ~ 255
+$img->contrast(-20);             // 对比度 -100 ~ 100
+$img->saturation(50);            // 饱和度 -100 ~ 100
+$img->blur(5);                   // 高斯模糊（1-10 次）
+$img->blurSelective();           // 选择性模糊（保留边缘）
+$img->sharpen();                 // 锐化
+$img->edgeDetect();              // 边缘检测
+$img->emboss();                  // 浮雕
+$img->pixelate(10);              // 像素化 / 马赛克
+$img->smooth(6);                 // 平滑
+$img->meanRemoval();             // 平均去噪
+$img->colorize(255, 0, 0);       // 色彩叠加 (R,G,B)
+$img->sepia();                   // 复古怀旧色调
+
+// 自定义滤镜
+$img->filter(IMG_FILTER_CONTRAST, -30);
+```
+
+### 水印 & 叠加
+
+```php
+$watermark = new Image('/path/to/logo.png');
+
+// 九宫格定位：topleft / topcenter / topright / middleleft / middlecenter / middleright / bottomleft / bottomcenter / bottomright
+$img->watermark($watermark, 'bottomright');
+$img->watermark($watermark, 'topleft', 50);   // 50% 不透明度
+
+// 自由叠加
+$img->merge($overlay, 100, 200, 70);          // x, y, 不透明度
+```
+
+### 文字
+
+```php
+// GD 内置字体（大小 1-5）
+$img->text('Hello Zap', 10, 20, 5, 'FFFFFF');
+
+// TTF 字体
+$img->ttfText('Hello', '/fonts/arial.ttf', 24, 50, 100, 'FF0000');
+$img->ttfText('倾斜', '/fonts/arial.ttf', 24, 50, 100, '000000', 30);
+
+// 获取 TTF 文字包围盒
+$box = Image::ttfBoundingBox('Hello', '/fonts/arial.ttf', 24);
+```
+
+### 格式转换
+
+```php
+// 设置输出格式（自动转换）
+$img->setOutputFormat('webp');     // 转 WebP
+$img->setOutputFormat('jpeg');     // 转 JPEG
+$img->setOutputFormat('png');      // 转 PNG
+$img->setOutputFormat('gif');      // 转 GIF
+
+// 控制质量
+$img->setQuality(85);              // 0-100（默认 90）
+```
+
+### 输出 & 保存
+
+```php
+// 保存到文件
+$img->save('/output/result.jpg');
+$img->save('/output/result.jpg', 95);      // 指定质量
+
+// 保存到目录（使用原始文件名）
+$img->savePath('/output/');
+
+// 保存到路径（自动创建目录）
+$img->saveFile('/output/images/avatar.png');
+
+// 获取二进制数据
+$data  = $img->getImageData();              // 原格式
+$data  = $img->getImageData('webp', 80);    // 指定格式+质量
+
+// Base64 Data URI
+$uri   = $img->toBase64();
+$uri   = $img->toBase64('png');
+
+// 浏览器输出
+$img->toBrowser();                           // 直接输出
+$img->download('photo.jpg');                 // 强制下载
+$img->download('photo.jpg', null, 90);       // 指定质量
+```
+
+### 复制 & 资源管理
+
+```php
+// 复制（独立的 GD 资源，互不影响）
+$copy = $img->copy();
+$copy->resize(200)->save('/output/thumb.jpg');
+
+// 显式销毁（释放内存）
+$img->destroy();
+
+// 析构时自动释放，无需手动调用
+```
+
+### 元数据
+
+```php
+// 图片信息
+$info = $img->info();      // [file, dirname, basename, mime, width, height, bits, ...]
+$info = $img->toArray();   // 同 info()
+
+// EXIF（仅 JPEG）
+$exif = $img->getExif();
+
+// 分辨率（DPI）
+$res = $img->getResolution();
+
+// Getter 方法
+$img->getWidth();
+$img->getHeight();
+$img->getMimeType();
+$img->getExtName();
+$img->getFile();
+$img->getImage();          // GD 资源
+$img->getBits();
+```
+
+### 完整示例：用户头像处理
+
+```php
+use zap\image\Image;
+
+$avatar = new Image('/tmp/upload.jpg');
+
+$avatar
+    ->orient()                                   // 修正 EXIF 方向
+    ->square(400, 'center')                      // 裁剪为正方形
+    ->resize(200, 200)                           // 缩放到目标尺寸
+    ->sharpen()                                  // 轻微锐化
+    ->setOutputFormat('webp')                    // 转为 WebP
+    ->setQuality(85)
+    ->saveFile('/public/avatars/user_123.webp');
+
+// 同时生成缩略图
+$avatar->copy()
+    ->resize(64, 64)
+    ->saveFile('/public/avatars/user_123_thumb.webp');
 ```
 
 ---
