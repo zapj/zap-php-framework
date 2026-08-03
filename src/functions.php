@@ -430,29 +430,29 @@ function print_styles() {
 
 function session(): Session
 {
-    return Session::instance();
+    return Session::getInstance();
 }
 
 function set_session($name, $value) {
-    Session::instance()->set($name, $value);
+    Session::getInstance()->set($name, $value);
 }
 
 function get_session($name, $default = null) {
-    return Session::instance()->get($name, $default);
+    return Session::getInstance()->get($name, $default);
 }
 
 function has_session($name): bool
 {
-    return Session::instance()->has($name);
+    return Session::getInstance()->has($name);
 }
 
 function remove_session($name) {
-    Session::instance()->remove($name);
+    Session::getInstance()->forget($name);
 }
 
 function add_flash($message,$type = FLASH_INFO): Session
 {
-    return Session::instance()->add_flash($message,$type);
+    return Session::getInstance()->add_flash($message, $type);
 }
 
 /**
@@ -463,18 +463,50 @@ function add_flash($message,$type = FLASH_INFO): Session
  */
 function get_flash($type = null, bool $first = false){
     if(!is_null($type) && $first){
-        return current(Session::instance()->getFlash($type));
+        return current(Session::getInstance()->getFlash($type));
     }
-    return Session::instance()->getFlash($type);
+    return Session::getInstance()->getFlash($type);
 }
 
 function has_flash($type = null): bool
 {
-    return Session::instance()->hasFlash($type);
+    return Session::getInstance()->hasFlash($type);
 }
 
 function clear_flash($type = null){
-    return Session::instance()->clearFlash($type);
+    return Session::getInstance()->clearFlash($type);
+}
+
+/**
+ * 获取上次请求的旧输入值
+ *
+ * @param string|null $key     字段名，null 返回全部
+ * @param mixed       $default 默认值
+ * @return mixed
+ */
+function old(?string $key = null, $default = null)
+{
+    return Session::getInstance()->old($key, $default);
+}
+
+/**
+ * 获取 CSRF Token
+ *
+ * @return string
+ */
+function csrf_token(): string
+{
+    return Session::getInstance()->token();
+}
+
+/**
+ * 输出 CSRF 隐藏域 HTML
+ *
+ * @return string
+ */
+function csrf_field(): string
+{
+    return '<input type="hidden" name="_token" value="' . esc(Session::getInstance()->token()) . '" />';
 }
 
 function req(): ZapRequest
