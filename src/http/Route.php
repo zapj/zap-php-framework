@@ -27,6 +27,9 @@ class Route
     /** @var string|null 路由组名 */
     protected ?string $groupName = null;
 
+    /** @var string|null 预编译的正则模式（路由缓存时填充，避免每次请求重新构建） */
+    protected ?string $compiledRegex = null;
+
     public function __construct(string $pattern, $fn, array $methods = ['GET'])
     {
         $this->pattern = $pattern;
@@ -37,18 +40,33 @@ class Route
     // ───────────────────── 模式匹配 ─────────────────────
 
     /**
+     * 编译路由模式为正则（结果缓存复用）
+     */
+    public function compilePattern(): string
+    {
+        if ($this->compiledRegex !== null) {
+            return $this->compiledRegex;
+        }
+
+        // 转义 / 并处理 {any} 通配符
+        $regex = '/^' . str_replace(['/', '{any}'], ['\/', '([^/]+)'], $this->pattern) . '$/';
+
+        // 替换命名的占位符 {name:pattern}
+        $regex = preg_replace('/\{([a-zA-Z_][a-zA-Z0-9_]*):([^}]+)\}/', '(?P<$1>$2)', $regex);
+
+        // 替换简单占位符 {name}
+        $regex = preg_replace('/\{([a-zA-Z_][a-zA-Z0-9_]*)\}/', '(?P<$1>[^/]+)', $regex);
+
+        $this->compiledRegex = $regex;
+        return $regex;
+    }
+
+    /**
      * 尝试将 URL 匹配到路由模式
      */
     public function matchPattern(string $url): bool
     {
-        // 构建正则
-        $pattern = '/^' . str_replace(['/', '{any}'], ['\/', '([^/]+)'], $this->pattern) . '$/';
-
-        // 替换命名的占位符 {name:pattern}
-        $pattern = preg_replace('/\{([a-zA-Z_][a-zA-Z0-9_]*):([^}]+)\}/', '(?P<$1>$2)', $pattern);
-
-        // 替换简单占位符 {name}
-        $pattern = preg_replace('/\{([a-zA-Z_][a-zA-Z0-9_]*)\}/', '(?P<$1>[^/]+)', $pattern);
+        $pattern = $this->compilePattern();
 
         if (preg_match($pattern, $url, $matches)) {
             // 提取命名参数
@@ -61,6 +79,48 @@ class Route
         }
 
         return false;
+    }
+
+    /**
+     * 导出为可缓存的数组（排除闭包等不可序列化的回调）
+     *
+     * @return array
+     * @throws \RuntimeException 当处理器是闭包时
+     */
+    public function toCacheData(): array
+    {
+        if ($this->fn instanceof \Closure) {
+            throw new \RuntimeException(
+                "Cannot cache route '{$this->pattern}': closure handlers are not serializable. " .
+                "Use 'Controller@method' string syntax instead."
+            );
+        }
+
+        // 确保正则已编译
+        $this->compilePattern();
+
+        return [
+            'pattern'       => $this->pattern,
+            'fn'            => $this->fn,
+            'methods'       => $this->methods,
+            'middlewares'   => $this->middlewares,
+            'routeName'     => $this->routeName,
+            'groupName'     => $this->groupName,
+            'compiledRegex' => $this->compiledRegex,
+        ];
+    }
+
+    /**
+     * 从缓存数据还原 Route 实例
+     */
+    public static function fromCacheData(array $data): self
+    {
+        $route = new self($data['pattern'], $data['fn'], $data['methods']);
+        $route->compiledRegex = $data['compiledRegex'] ?? null;
+        $route->middlewares   = $data['middlewares'] ?? [];
+        $route->routeName     = $data['routeName'] ?? null;
+        $route->groupName     = $data['groupName'] ?? null;
+        return $route;
     }
 
     // ───────────────────── 中间件 ─────────────────────
