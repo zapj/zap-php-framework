@@ -73,51 +73,130 @@ require_once VENDOR_PATH . '/autoload.php';
 ```php
 use zap\http\Route;
 
-// GET 请求
+// HTTP 方法快捷注册
 Route::get('/user/{id}', function($id) {
     return "User ID: $id";
 });
+Route::post('/user', 'UserController@save');
+Route::put('/user/{id}', 'UserController@update');
+Route::patch('/user/{id}', 'UserController@partialUpdate');
+Route::delete('/user/{id}', 'UserController@destroy');
 
-// 多方法
-Route::any('/contact', 'ContactController@index');
+// 占位符语法
+Route::get('/posts/{id:\d+}', 'PostController@show');     // 正则约束
+Route::get('/posts/{slug}', 'PostController@bySlug');      // 任意字符
 
-// RESTful 路由
-Route::resource('/posts', 'PostController');
-Route::resources([
-    '/posts' => 'PostController',
-    '/tags'  => 'TagController',
-]);
+Route::any('/contact', 'ContactController@index');          // 匹配所有方法
+Route::match(['GET', 'POST'], '/form', 'FormController@handle');
 ```
+
+### 路由参数约束
+
+```php
+// {name:pattern} 格式
+Route::get('/user/{id:\d+}', ...);              // 仅数字
+Route::get('/user/{name:[a-zA-Z]+}', ...);       // 仅字母
+Route::get('/file/{path:.*}', ...);              // 任意路径（包含斜杠）
+
+// 简单占位符 {name} = 匹配除 '/' 外的任意字符
+Route::get('/api/{resource}/{id}', ...);
+```
+
+### 命名路由 & URL 生成
+
+```php
+// 注册命名路由
+Route::get('/user/profile', 'UserController@profile')->name('profile');
+Route::get('/posts/{id:\d+}', 'PostController@show')->name('post.show');
+
+// 生成 URL
+$url = Router::url('profile');                          // /user/profile
+$url = Router::url('post.show', ['id' => 123]);         // /posts/123
+```
+
+> URL 生成会替换 `{param}` 占位符并自动清理未填充的占位符。
 
 ### 路由组
 
 ```php
-Route::group('/admin', function() {
-    Route::get('/dashboard', 'Admin\DashboardController@index');
-    Route::get('/users', 'Admin\UserController@index');
-})->middleware('auth');
+// 前缀分组
+Route::group(['prefix' => 'admin'], function() {
+    Route::get('/dashboard', 'Admin\DashboardController@index');   // GET /admin/dashboard
+    Route::get('/users', 'Admin\UserController@index');            // GET /admin/users
+});
+
+// 中间件分组
+Route::group(['prefix' => 'admin', 'middleware' => 'auth'], function() {
+    Route::get('/settings', 'Admin\SettingsController@index');
+});
+
+// 嵌套分组
+Route::group(['prefix' => 'api'], function() {
+    Route::group(['prefix' => 'v1'], function() {
+        Route::get('/users', 'Api\V1\UserController@index');       // GET /api/v1/users
+    });
+});
 ```
 
-### 命名路由与 URL 生成
+### 资源路由
 
 ```php
-Route::get('/user/profile', 'UserController@profile')->name('profile');
-// 使用: route('profile')
+// 完整 RESTful 路由
+Route::resource('posts', 'PostController');
+// 自动注册：
+//   GET     /posts             → index
+//   GET     /posts/create      → create
+//   POST    /posts             → save
+//   GET     /posts/{id:\d+}    → show
+//   GET     /posts/{id:\d+}/edit → edit
+//   PUT     /posts/{id:\d+}    → update
+//   DELETE  /posts/{id:\d+}    → destroy
 
-Route::addController('/user', 'UserController');  // 自动映射方法
+// 限定动作
+Route::resource('posts', 'PostController', ['only' => ['index', 'show']]);
+Route::resource('posts', 'PostController', ['except' => ['destroy']]);
 ```
 
-### 路由缓存（生产环境推荐）
+### 中间件
 
 ```php
-// 生成缓存
-\zap\http\Router::cacheRoutes();
+// 路由级中间件
+Route::get('/profile', 'UserController@profile')->middleware('auth');
 
-// 清除缓存
-\zap\http\Router::clearRouteCache();
+// 组级中间件
+Route::group(['middleware' => 'auth'], function() {
+    Route::get('/dashboard', 'DashboardController@index');
+});
 ```
 
-> 缓存文件将生成到 `var/cache/routes.php`，框架会自动检测路由文件更新时间并在过期时重新生成。
+### 404 处理
+
+```php
+// 注册自定义 404 处理器
+Router::setNotFound(function($url) {
+    return view('errors.404', ['url' => $url], true);
+});
+
+// 或指定控制器方法
+Router::setNotFound('ErrorController@notFound');
+```
+
+### 静态方法速查
+
+| 方法 | 说明 |
+|------|------|
+| `Route::get($pattern, $handler)` | GET / HEAD |
+| `Route::post($pattern, $handler)` | POST |
+| `Route::put($pattern, $handler)` | PUT |
+| `Route::patch($pattern, $handler)` | PATCH |
+| `Route::delete($pattern, $handler)` | DELETE |
+| `Route::options($pattern, $handler)` | OPTIONS |
+| `Route::any($pattern, $handler)` | 所有方法 |
+| `Route::match($methods, $pattern, $handler)` | 指定多个方法 |
+| `Route::resource($name, $controller, $opts)` | RESTful 资源 |
+| `Route::group($attrs, $callback)` | 路由分组 |
+| `Router::url($name, $params)` | 生成命名路由 URL |
+| `Router::setNotFound($handler)` | 404 处理器 |
 
 ---
 
@@ -169,31 +248,60 @@ class PostController extends RestController
 ```php
 use zap\http\Request;
 
-// 获取输入
-$name = Request::get('name');
-$all  = Request::all();
+// 获取输入（自动检测 GET → POST → JSON body 优先级）
+$name  = Request::input('name');
+$all   = Request::all();             // 所有输入（合并 GET+POST+JSON）
+$only  = Request::only(['name', 'email']);
+$except = Request::except(['_token', 'password']);
 
-// 请求信息
-$method  = Request::method();    // GET/POST/PUT...
-$ip      = Request::ip();        // 客户端 IP（防伪造）
-$isAjax  = Request::isAjax();
-$isJson  = Request::isJson();
-$isPost  = Request::isPost();
-$isMobile = Request::isMobile();
+// 检测输入是否存在
+if (Request::has('id')) { ... }
 
-// 文件上传
-$file = Request::file('avatar');
+// 获取特定来源
+$page = Request::query('page', 1);   // 仅 GET
+$data = Request::post('title');      // 仅 POST
+
+// JSON 请求体（Content-Type: application/json）
+$json = Request::json();             // 返回 array|null
+$raw  = Request::rawBody();          // 原始请求体字符串
 ```
 
-### IP 获取安全性
-
-IP 地址默认从 `REMOTE_ADDR` 获取，不信任代理头。如果需要从代理头获取，需在配置中显式启用：
+### 请求信息
 
 ```php
-// config/config.php
-return [
-    'trusted_proxies' => true,  // 仅在可信代理环境下开启
-];
+$method   = Request::method();       // GET/POST/PUT/PATCH/DELETE 等
+$url      = Request::url();          // http://domain.com/path
+$fullUrl  = Request::fullUrl();      // http://domain.com/path?query=string
+$uri      = Request::uri();          // /path
+$path     = Request::path();         // /path（不含查询字符串）
+$scheme   = Request::scheme();       // http / https
+$host     = Request::host();         // domain.com
+$port     = Request::port();         // 80 / 443
+
+$ip       = Request::ip();           // 客户端 IP（遍历代理头，过滤非法值）
+$ua       = Request::userAgent();    // User-Agent
+$referer  = Request::referer();      // HTTP_REFERER
+$lang     = Request::language();     // 首选语言（如 zh-CN）
+
+// 方法检测
+Request::isGet();        Request::isPost();      Request::isPut();
+Request::isPatch();      Request::isDelete();    Request::isOptions();
+Request::isHead();       Request::isAjax();      Request::isJson();
+```
+
+### 文件上传
+
+```php
+$file   = Request::file('avatar');               // 获取单个上传文件
+if (Request::hasFile('avatar')) { ... }           // 检查是否有上传
+```
+
+### 请求头
+
+```php
+$contentType = Request::headers('Content-Type');
+$authToken   = Request::headers('Authorization');
+$allHeaders  = Request::headers();                // 返回全部请求头
 ```
 
 ### 响应
@@ -201,36 +309,143 @@ return [
 ```php
 use zap\http\Response;
 
-// JSON 响应
-Response::json(['code' => 0, 'data' => $result]);
-Response::jsonError('操作失败', 500);
+// JSON 响应（自动设置 Content-Type）
+Response::ok(['data' => $result]);
+Response::created(['id' => $newId]);
 
-// 视图响应
-return view('welcome', ['name' => 'Zap']);
+// 错误响应
+Response::notFound('资源不存在');
+Response::forbidden('无权限');
+Response::unauthorized('请先登录');
+Response::badRequest('参数错误');
+Response::noContent();
 
+// 自定义响应
+$res = new Response();
+$res->setContent('Hello World')
+    ->setStatusCode(200)
+    ->html()          // Content-Type: text/html
+    ->header('X-Custom', 'value')
+    ->send();
+
+// 响应类型快捷
+$res->json()          // Content-Type: application/json
+    ->html()          // Content-Type: text/html
+    ->text();         // Content-Type: text/plain
+
+// 链式构建 + 手动发送
+Response::ok($data)->send();  // 显式调用 send() 发 送
+Response::notFound()->send();
+```
+
+### 重定向与下载
+
+```php
 // 重定向
 Response::redirect('/login');
-Response::back();    // 返回上一页
+Response::redirect('https://example.com', 301);
+
+// 文件下载
+Response::download('/path/to/file.pdf');
+Response::download('/path/to/file.pdf', '报告.pdf');
+
+// 设置 Cookie
+$res = new Response();
+$res->cookie('name', 'value', time() + 3600, '/', '', true, true, 'Lax');
+```
+
+### Session 会话
+
+```php
+use zap\http\Session;
+
+$session = Session::getInstance();
+$session->start();                               // 自动启动（读写时自动调 用）
+
+// 基本操作
+$session->set('user', ['id' => 5, 'name' => 'Zap']);
+$user = $session->get('user');
+$name = $session->get('user.name', 'Guest');    // 点分路径访问嵌套值
+
+// 存在性检查
+if ($session->has('user')) { ... }               // 不依赖值真假
+
+// 读取并删除 / 删除
+$value = $session->pull('key');                 // 取一次就删
+$session->forget('key');
+$session->forget(['key1', 'key2']);             // 批量删除
+
+// 数组操作
+$session->push('items', 'new item');             // 向数组推入
+$session->increment('views');                    // +1
+$session->decrement('stock', 2);                 // -2
+
+// 批量操作
+$all  = $session->all();                         // 全部数据
+$part = $session->only(['user', 'cart']);        // 仅获取指定键
+
+// 安全
+$session->regenerate();                          // 防会话固定
+$session->regenerate(true);                      // 同时删除旧 session
+$session->destroy();                             // 完全销毁
 ```
 
 ### Flash 消息（一次性会话消息）
 
 ```php
-Response::flash('操作成功');    // success
-Response::flash('保存失败', new RedirectResponse('/form'), 'error');
+$session = Session::getInstance();
 
-// 视图中获取
-session()->getFlash('message');
-session()->getFlash('type');
+// 写入 Flash
+$session->flash('success', '操作成功');
+$session->flash('error', '保存失败，请重试');
+
+// 读取并清除
+$messages = $session->getFlash();               // 所有类型
+$success  = $session->getFlash('success');       // 指定类型
+$alerts   = $session->getFlash(['success', 'error']);
+
+// 检查
+if ($session->hasFlash()) { ... }
+
+// 清除
+$session->clearFlash('success');                 // 清除指定类型
+$session->clearFlash();                          // 清除全部
 ```
 
-### 可测试性
+### 请求/响应 静态方法速查
 
-测试环境中可禁用 `send()` 的 `exit` 调用：
+**Request（门面→ZapRequest）：**
 
-```php
-\zap\http\Response::$shouldExit = false;
-```
+| 方法 | 说明 |
+|------|------|
+| `Request::input($key, $default)` | 通用输入（GET→POST→JSON） |
+| `Request::query($key, $default)` | 仅 GET |
+| `Request::post($key, $default)` | 仅 POST |
+| `Request::json()` | JSON 请求体 |
+| `Request::rawBody()` | 原始请求体 |
+| `Request::has($key)` | 输入是否存在 |
+| `Request::all()` | 所有输入 |
+| `Request::only($keys)` | 仅取指定键 |
+| `Request::except($keys)` | 排除指定键 |
+| `Request::method()` / `isPost()` / ... | 请求方法 |
+| `Request::url()` / `fullUrl()` / `path()` | URL 信息 |
+| `Request::ip()` / `userAgent()` / `language()` | 客户端信息 |
+| `Request::headers($key, $default)` | 请求头 |
+| `Request::file($key)` / `hasFile($key)` | 文件上传 |
+
+**Response（静态工厂）：**
+
+| 方法 | 说明 |
+|------|------|
+| `Response::ok($data)` | 200 JSON |
+| `Response::created($data)` | 201 JSON |
+| `Response::noContent()` | 204 |
+| `Response::notFound($msg)` | 404 JSON |
+| `Response::forbidden($msg)` | 403 JSON |
+| `Response::unauthorized($msg)` | 401 JSON |
+| `Response::badRequest($msg)` | 400 JSON |
+| `Response::redirect($url, $code)` | 重定向 |
+| `Response::download($path, $name)` | 文件下载 |
 
 ---
 

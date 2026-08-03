@@ -2,474 +2,289 @@
 
 namespace zap\http;
 
-
-use Exception;
-use ReflectionMethod;
-use zap\App;
-use zap\util\Arr;
-use zap\util\Str;
-use zap\view\ZView;
+use \Exception;
 
 class Router
 {
+    /** @var array 已注册的路由 */
+    public $routes = [];
 
-    const NOT_FOUND = 1;
-    const FOUND = 2;
+    /** @var array 当前路由参数（匹配后填充） */
+    public array $params = [];
 
-    /** @var string 路由缓存文件路径 */
-    const CACHE_FILE = '/var/cache/routes.php';
+    /** @var callable|string|null notFound 处理器 */
+    protected $_notfound;
+
+    /** @var array 命名路由表 ['name' => 'pattern'] */
+    protected static array $namedRoutes = [];
+
+    /** @var array 路由组属性栈 */
+    protected array $groupStack = [];
+
+    /** @var int 当前分组内路由计数 */
+    protected int $groupRouteCount = 0;
+
+    // ───────────────────── HTTP 方法快捷注册 ─────────────────────
+
+    public function get(string $pattern, $fn): Route
+    {
+        return $this->match(['GET', 'HEAD'], $pattern, $fn);
+    }
+
+    public function post(string $pattern, $fn): Route
+    {
+        return $this->match(['POST'], $pattern, $fn);
+    }
+
+    public function put(string $pattern, $fn): Route
+    {
+        return $this->match(['PUT'], $pattern, $fn);
+    }
+
+    public function patch(string $pattern, $fn): Route
+    {
+        return $this->match(['PATCH'], $pattern, $fn);
+    }
+
+    public function delete(string $pattern, $fn): Route
+    {
+        return $this->match(['DELETE'], $pattern, $fn);
+    }
+
+    public function options(string $pattern, $fn): Route
+    {
+        return $this->match(['OPTIONS'], $pattern, $fn);
+    }
 
     /**
-     * @var array 路由规则
+     * 注册任意 HTTP 方法路由
      */
-    private $routes = [];
+    public function any(string $pattern, $fn): Route
+    {
+        return $this->match(['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], $pattern, $fn);
+    }
 
-    private $middlewares = [];
-
-    protected $notFoundCallback = [];
-
-    private $baseRoute = '';
-
-    private $requestMethod = 'GET';
-
-    public $baseUrl;
-
-    public $currentRoute;
-
-    public $currentUri;
-
-    public $params = [];
-
-    private $defaultMethods = 'GET|POST|PUT|DELETE|OPTIONS|PATCH|HEAD';
-
-    protected $isAjax = false;
     /**
+     * 注册多条 HTTP 方法的路由
+     */
+    public function match(array $methods, string $pattern, $fn): Route
+    {
+        $pattern = $this->applyGroupPrefix($pattern);
+        $route = new Route($pattern, $fn, $methods);
+        $this->routes[] = $route;
+        $this->groupRouteCount++;
+        return $route;
+    }
+
+    // ───────────────────── 路由组 ─────────────────────
+
+    /**
+     * 路由分组
+     */
+    public function group(array $attributes, callable $callback): void
+    {
+        $this->groupStack[] = $attributes;
+        $this->groupRouteCount = 0;
+        $callback($this);
+        array_pop($this->groupStack);
+    }
+
+    /**
+     * 应用分组前缀和中间件
+     */
+    private function applyGroupPatterns(Route $route): void
+    {
+        foreach ($this->groupStack as $group) {
+            if (isset($group['middleware'])) {
+                $mw = $group['middleware'];
+                if (is_string($mw)) {
+                    $route->middleware($mw);
+                } elseif (is_array($mw)) {
+                    foreach ($mw as $m) {
+                        $route->middleware($m);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 应用分组前缀
+     */
+    private function applyGroupPrefix(string $pattern): string
+    {
+        if (empty($this->groupStack)) {
+            return $pattern;
+        }
+        $prefix = '';
+        foreach ($this->groupStack as $group) {
+            if (isset($group['prefix'])) {
+                $prefix .= '/' . trim($group['prefix'], '/');
+            }
+        }
+        return $prefix . '/' . ltrim($pattern, '/');
+    }
+
+    // ───────────────────── 资源路由 ─────────────────────
+
+    /**
+     * 注册 RESTful 资源路由
+     *
+     * @param string $name       资源名称
+     * @param string $controller 控制器类名
+     * @param array  $options    选项 ['only'=>[...], 'except'=>[...]]
+     */
+    public function resource(string $name, string $controller, array $options = []): void
+    {
+        $actions = [
+            'index'   => ['get',    "/{$name}",               '@index'],
+            'create'  => ['get',    "/{$name}/create",        '@create'],
+            'save'    => ['post',   "/{$name}",               '@save'],
+            'show'    => ['get',    "/{$name}/{id:\d+}",      '@show'],
+            'edit'    => ['get',    "/{$name}/{id:\d+}/edit", '@edit'],
+            'update'  => ['put',    "/{$name}/{id:\d+}",      '@update'],
+            'destroy' => ['delete', "/{$name}/{id:\d+}",      '@destroy'],
+        ];
+
+        // 仅注册指定动作
+        if (isset($options['only'])) {
+            $actions = array_intersect_key($actions, array_flip((array)$options['only']));
+        }
+        // 排除指定动作
+        if (isset($options['except'])) {
+            $actions = array_diff_key($actions, array_flip((array)$options['except']));
+        }
+
+        foreach ($actions as $action => [$method, $pattern, $suffix]) {
+            $route = $this->$method($pattern, $controller . $suffix);
+            $route->name("{$name}.{$action}");
+        }
+    }
+
+    // ───────────────────── 命名路由 ─────────────────────
+
+    /**
+     * 注册命名路由（用于 URL 生成）
+     */
+    public function name(string $name, string $pattern): void
+    {
+        static::$namedRoutes[$name] = $pattern;
+    }
+
+    /**
+     * 根据路由名称生成 URL
+     *
+     * @param string $name   路由名称
+     * @param array  $params 参数替换 ['id' => 5]
      * @return string
      */
-    public function __construct()
+    public static function url(string $name, array $params = []): string
     {
-        $this->requestMethod = Request::method();
-        $this->currentUri = $this->getCurrentUri();
-        $this->isAjax = Request::isAjax();
+        if (!isset(static::$namedRoutes[$name])) {
+            throw new \InvalidArgumentException("Named route '{$name}' not found.");
+        }
+
+        $url = static::$namedRoutes[$name];
+
+        // 替换 {param} 占位符
+        foreach ($params as $key => $value) {
+            $url = preg_replace('/\{' . preg_quote($key, '/') . '(:[^}]+)?\}/', (string)$value, $url);
+        }
+
+        // 移除未填充的可选参数
+        $url = preg_replace('/\{[^}]+\}/', '', $url);
+
+        // 清理多余的 /
+        $url = preg_replace('#/+#', '/', $url);
+
+        return $url;
     }
 
     /**
-     * @return Router
+     * 获取所有命名路由
      */
-    public static function create(): Router
+    public static function getNamedRoutes(): array
     {
-        app()->router = new Router();
-        // 加载路由配置
-        $route_file = config_path('route.php');
-        if(is_file($route_file)){
-            // 尝试加载缓存
-            if (static::loadCachedRoutes(app()->router)) {
-                return app()->router;
-            }
-            require_once $route_file;
-        }
-        return app()->router;
+        return static::$namedRoutes;
     }
 
-
-    public function filter($pattern, $fn, $options = []): Router
-    {
-        $pattern = $this->baseRoute . '/' . trim($pattern, '/');
-        $pattern = $this->baseRoute ? rtrim($pattern, '/') : $pattern;
-
-        $this->middlewares[] = array(
-            'pattern' => $pattern,
-            'fn' => $fn,
-            'options' => $options
-        );
-        return $this;
-    }
-
-    public function prefix($pattern, $fn, $options = [])
-    {
-        $pattern = $this->baseRoute . '/' . trim($pattern, '/');
-        $pattern = $this->baseRoute ? rtrim($pattern, '/') : $pattern;
-        $this->middlewares[] = array(
-            'pattern' => $pattern,
-            'fn' => $fn,
-            'options' => $options
-        );
-    }
-    
-    public function match($methods, $pattern, $fn)
-    {
-        $pattern = $this->baseRoute . '/' . trim($pattern, '/');
-        $pattern = $this->baseRoute ? rtrim($pattern, '/') : $pattern;
-
-        foreach (explode('|', $methods) as $method) {
-            $this->routes[$method][] = array(
-                'pattern' => $pattern,
-                'fn' => $fn,
-            );
-        }
-    }
-
-    public function any($pattern, $action)
-    {
-        $this->match($this->defaultMethods, $pattern, $action);
-    }
-
-    public function get($pattern, $action)
-    {
-        $this->match('GET', $pattern, $action);
-    }
-
-    public function post($pattern, $action)
-    {
-        $this->match('POST', $pattern, $action);
-    }
-
-    public function patch($pattern, $action)
-    {
-        $this->match('PATCH', $pattern, $action);
-    }
-
-    public function delete($pattern, $action)
-    {
-        $this->match('DELETE', $pattern, $action);
-    }
-
-    public function put($pattern, $action)
-    {
-        $this->match('PUT', $pattern, $action);
-    }
-
-    public function options($pattern, $action)
-    {
-        $this->match('OPTIONS', $pattern, $action);
-    }
-
-
-    public function group($baseRoute, $action)
-    {
-        $curBaseRoute = $this->baseRoute;
-
-        $this->baseRoute .= $baseRoute;
-
-        call_user_func($action);
-
-        $this->baseRoute = $curBaseRoute;
-    }
-
-    public function dispatch()
-    {
-        if ($this->handleMiddlewares($this->middlewares) === FALSE) {
-            return true;
-        }
-
-        $found = false;
-        if (isset($this->routes[$this->requestMethod])) {
-            $found = $this->handle($this->routes[$this->requestMethod]);
-        }
-
-        if (!$found) {
-            if (isset($this->routes[$this->requestMethod])) {
-                $this->trigger404($this->routes[$this->requestMethod]);
-            }
-        }
-        if ($this->requestMethod == 'HEAD') {
-            ob_end_clean();
-        }
-        return $found;
-    }
-
-    public function setNotFound($match_fn, $func = null)
-    {
-        if (!is_null($func)) {
-            $this->notFoundCallback[$match_fn] = $func;
-        } else {
-            $this->notFoundCallback['/'] = $match_fn;
-        }
-    }
-
-    public function trigger404($match = null){
-
-        $numHandled = 0;
-
-        if (count($this->notFoundCallback) > 0)
-        {
-            foreach ($this->notFoundCallback as $route_pattern => $route_callable) {
-
-                $matches = [];
-
-                $is_match = $this->patternMatches($route_pattern, $this->getCurrentUri(), $matches, PREG_OFFSET_CAPTURE);
-
-                if ($is_match) {
-
-                    $matches = array_slice($matches, 1);
-
-                    $params = [];
-                    for ($i = 0; $i < count($matches); $i=$i+2) {
-                        $params[]= $matches[$i+1][0][0] ?? null;
-                    }
-
-                    $this->invoke($route_callable,$params);
-
-                    ++$numHandled;
-                }
-            }
-        }
-        if (($numHandled == 0) && (isset($this->notFoundCallback['/']))) {
-            $this->invoke($this->notFoundCallback['/']);
-        } elseif ($numHandled == 0) {
-            header($_SERVER['SERVER_PROTOCOL'] . ' 404 Not Found');
-            if($this->isAjax){
-                Response::json(['code'=>404,'msg'=>'404 Not Found']);
-            }
-            ZView::render(ZAP_SRC.'/resources/views/http/404.html');
-        }
-        exit(0);
-    }
-
-    private function patternMatches($pattern, $uri, &$matches, $flags)
-    {
-        $pattern = preg_replace('/\/{\w+:(.*?)}/', '/($1)', $pattern);
-        $pattern = preg_replace('/\/{(.*?)}/', '/(.*?)', $pattern);
-        return boolval(preg_match_all('#^' . $pattern . '$#', $uri, $matches, $flags));
-    }
-
-    private function handleMiddlewares($routes){
-        foreach ($routes as $route) {
-            $is_match = boolval(preg_match("#^" . $route['pattern'] . "#i", $this->currentUri));
-            if(!$is_match){
-                continue;
-            }
-            $is_match && $this->currentRoute = $route;
-            if ($is_match && $this->invokeMiddleware($route['fn'],$route['options']) === false) {
-                if ($this->requestMethod == 'HEAD') {
-                    ob_end_clean();
-                }
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private function handle($routes): bool
-    {
-        $is_match = false;
-        foreach ($routes as $route) {
-            $is_match = $this->patternMatches($route['pattern'], $this->currentUri, $matches, PREG_OFFSET_CAPTURE);
-            if ($is_match) {
-
-                $matches = array_slice($matches, 1);
-                $this->currentRoute = $route;
-                $params = [];
-                for ($i = 0; $i < count($matches); $i=$i+2) {
-                    $params[]= $matches[$i+1][0][0] ?? null;
-                }
-
-                $this->invoke($route['fn'], $params, $route['options']);
-
-
-
-                break;
-            }
-        }
-
-        return $is_match;
-    }
-
-    private function invoke($fn, $params = array(), $options = [])
-    {
-        if (is_callable($fn)) {
-            call_user_func_array($fn, $params);
-        }
-        elseif (stripos($fn, '@') !== false) {
-            [$controller, $method] = explode('@', $fn);
-            try {
-                $reflectedMethod = new \ReflectionMethod($controller, $method);
-                if ($reflectedMethod->isPublic() && (!$reflectedMethod->isAbstract())) {
-                    if ($reflectedMethod->isStatic()) {
-                        forward_static_call_array(array($controller, $method), $params);
-                    } else {
-                        $controller = new $controller();
-                        call_user_func_array(array($controller, $method), $params);
-                    }
-                }
-            } catch (\ReflectionException $e) {
-                if(call_user_func_array(array($controller, '_notfound'), $params) === NULL){
-                    $this->trigger404();
-                }
-            }
-        }else if(class_exists($fn)){
-            $controller = new $fn();
-            if(is_array($params) && isset($params[0]) && method_exists($controller,$params[0])){
-                call_user_func_array([$controller,$params[0]],array_slice($params,1));
-            }
-        }
-    }
-
-    private function invokeMiddleware($fn, $options = []): bool
-    {
-        $ret = true;
-        if (is_callable($fn)) {
-            $ret = call_user_func_array($fn, ['router' => $this]);
-        }else if(stripos($fn, '@') !== false){
-            [$controllerName, $method] = explode('@', $fn);
-            $controller = new $controllerName();
-            $ret = call_user_func_array([$controller,$method],$options);
-        }else {
-            $ret = $this->callMiddleware($fn,$options);
-        }
-
-        if((is_null($ret) || $ret) && isset($options['namespace'])) {
-            $class = $options['dispatcher'] = $options['dispatcher'] ?? Dispatcher::class;
-            $ret = $this->callMiddleware($class,$options);
-        }
-
-        return (is_null($ret) || $ret);
-    }
-
-    private function callMiddleware($fn,$options = []){
-        try{
-            $reflect = new \ReflectionClass($fn);
-            if(!$reflect->isInstantiable() || !$reflect->isSubclassOf(Middleware::class)){
-                return false;
-            }
-            if($reflect->getConstructor()->getNumberOfParameters()){
-                $middleware = $reflect->newInstanceArgs(['options'=>$options]);
-            }else{
-                $middleware = $reflect->newInstance();
-            }
-
-            $middleware->router = $this;
-            $middleware->baseUrl = $this->getBaseUrl();
-            $middleware->currentUri = $this->getCurrentUri();
-            if(isset($options['dispatcher'])){
-                app()->dispatcher = $middleware;
-            }
-            return $middleware->handle();
-        }catch (\ReflectionException $e){
-            return false;
-        }
-    }
-
-    public function getCurrentUri(): string
-    {
-        $uri = substr(rawurldecode($_SERVER['REQUEST_URI']), strlen($this->getBaseUrl()));
-        if (strstr($uri, '?')) {
-            $uri = substr($uri, 0, strpos($uri, '?'));
-        }else if(strstr($uri, '#')){
-            $uri = substr($uri, 0, strpos($uri, '#'));
-        }
-        if(($suffix = config('config.suffix',false)) !== false){
-            $uri = preg_replace('/'.preg_quote($suffix).'$/','',$uri);
-        }
-        return '/' . trim($uri, '/');
-    }
-
-
-    public function getBaseUrl(): string
-    {
-        if ($this->baseUrl === null) {
-            $this->baseUrl = implode('/', array_slice(explode('/', $_SERVER['SCRIPT_NAME']), 0, -1)) ;
-        }
-
-        return $this->baseUrl;
-    }
-
-    public function setBaseUrl($baseUrl): void
-    {
-        $this->baseUrl = $baseUrl;
-    }
-
-    public static function convertToUrlName($name) : string {
-        return strtolower(trim(preg_replace('/([A-Z])/', '-$1', $name),'-'));
-    }
-
-    public static function convertToName($name): string
-    {
-        return str_replace(['-', '_'], '',ucwords($name,'-_'));
-    }
+    // ───────────────────── NotFound ─────────────────────
 
     /**
-     * 获取路由缓存文件路径
-     */
-    protected static function getCacheFilePath(): string
-    {
-        return base_path(static::CACHE_FILE);
-    }
-
-    /**
-     * 编译路由并写入缓存文件
-     * 在部署后调用一次以提升性能
+     * 注册 404 处理器
      *
+     * @param callable|string $handler 回调或 'Controller@method'
+     */
+    public function setNotFound($handler): void
+    {
+        $this->_notfound = $handler;
+    }
+
+    /**
+     * 获取 404 处理器
+     *
+     * @return callable|string|null
+     */
+    public function getNotFound()
+    {
+        return $this->_notfound;
+    }
+
+    // ───────────────────── 调度 ─────────────────────
+
+    /**
+     * 匹配并执行路由
+     *
+     * @param string $requestUrl    请求 URL（已解析）
+     * @param string $requestMethod HTTP 方法
      * @return bool
      */
-    public static function cacheRoutes(): bool
+    public function dispatch(string $requestUrl, string $requestMethod = 'GET'): bool
     {
-        if (!is_file(config_path('route.php'))) {
-            return false;
+        $matched = false;
+
+        // HEAD 请求复用 GET 路由
+        if ($requestMethod === 'HEAD') {
+            if (!ob_get_level()) {
+                ob_start();
+            }
+            $matched = $this->dispatchInternal($requestUrl, 'GET', true);
+        } else {
+            $matched = $this->dispatchInternal($requestUrl, $requestMethod, false);
         }
 
-        // 创建一个临时 Router 来收集路由
-        $tempRouter = new self();
-        require config_path('route.php');
-
-        $cachePath = static::getCacheFilePath();
-        $dir = dirname($cachePath);
-        if (!is_dir($dir)) {
-            @mkdir($dir, 0777, true);
-        }
-
-        $cache = sprintf(
-            '<?php return %s;',
-            var_export([
-                'routes' => $tempRouter->routes,
-                'middlewares' => $tempRouter->middlewares,
-                'notFoundCallback' => $tempRouter->notFoundCallback,
-            ], true)
-        );
-
-        return @file_put_contents($cachePath, $cache) !== false;
+        return $matched;
     }
 
     /**
-     * 从缓存文件加载路由
-     *
-     * @param Router $router
-     * @return bool 是否成功从缓存加载
+     * 内部调度逻辑
      */
-    protected static function loadCachedRoutes(Router $router): bool
+    private function dispatchInternal(string $requestUrl, string $requestMethod, bool $headMode): bool
     {
-        $cachePath = static::getCacheFilePath();
-        if (!is_file($cachePath)) {
-            return false;
+        foreach ($this->routes as $route) {
+            // 方法不匹配则跳过
+            if (!in_array($requestMethod, $route->methods, true)) {
+                continue;
+            }
+
+            // 特殊路由（直接回调）
+            if (is_string($route->fn) && $route->fn[0] === '/') {
+                if ($route->fn === $requestUrl || $route->fn === '*') {
+                    $this->params = [];
+                    $route->invoke($this->params);
+                    return true;
+                }
+                continue;
+            }
+
+            // 模式匹配
+            if ($route->matchPattern($requestUrl)) {
+                $this->params = $route->params;
+                $route->invoke($this->params);
+                return true;
+            }
         }
 
-        // 检查缓存是否过期（路由文件更新时）
-        $routeFile = config_path('route.php');
-        if (is_file($routeFile) && filemtime($cachePath) < filemtime($routeFile)) {
-            @unlink($cachePath);
-            return false;
-        }
-
-        $cached = include $cachePath;
-        if (!is_array($cached)) {
-            return false;
-        }
-
-        $router->routes = $cached['routes'] ?? [];
-        $router->middlewares = $cached['middlewares'] ?? [];
-        $router->notFoundCallback = $cached['notFoundCallback'] ?? [];
-
-        return true;
-    }
-
-    /**
-     * 清除路由缓存
-     */
-    public static function clearRouteCache(): void
-    {
-        $cachePath = static::getCacheFilePath();
-        if (is_file($cachePath)) {
-            @unlink($cachePath);
-        }
+        return false;
     }
 }
