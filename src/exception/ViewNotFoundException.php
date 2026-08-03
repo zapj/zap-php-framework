@@ -4,5 +4,28 @@ namespace zap\exception;
 
 class ViewNotFoundException extends \Exception
 {
+    protected $viewName;
 
+    /**
+     * @param string          $viewName   视图名称
+     * @param string          $message    错误消息
+     * @param int             $code       错误码
+     * @param \Throwable|null $previous   前一个异常
+     */
+    public function __construct($viewName = '', $message = '', $code = 0, \Throwable $previous = null)
+    {
+        $this->viewName = $viewName;
+        if (empty($message)) {
+            $message = "View not found: {$viewName}";
+        }
+        parent::__construct($message, $code, $previous);
+    }
+
+    /**
+     * 获取缺失的视图名称
+     */
+    public function getViewName(): string
+    {
+        return $this->viewName;
+    }
 }

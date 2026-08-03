@@ -1305,48 +1305,177 @@ DB::connectionInfo();  // [driver, server, version, ...]
 
 ## 视图
 
-### 基本使用
+Zap 提供轻量级原生 PHP 模板引擎，同时支持 Twig。具有布局继承、块系统、部分包含、HTML 转义等特性。
+
+### 渲染视图
 
 ```php
-// 渲染视图
-return view('users.profile', ['user' => $user]);
-return view('emails.welcome', $data);
+use zap\view\View;
 
-// 直接渲染
-$html = view('widgets.sidebar')->render();
+// 控制器中渲染
+return view('users.profile', ['user' => $user]);       // 直接输出
+$html = view('emails.welcome', $data, true);            // 返回字符串
+
+// 链式调用
+$html = View::make('users.profile')
+    ->with('user', $user)
+    ->with('role', 'admin')
+    ->withLayout('layouts.main')
+    ->fetch();
+
+// 直接输出
+View::make('home')->with('title', '首页')->show();
+
+// 检查模板是否存在
+if (View::exists('admin.dashboard')) { ... }
+
+// 第一个存在的模板（备选逻辑）
+$tpl = View::first('custom.home', 'default.home');      // 优先 custom
 ```
 
-### 模板引擎
-
-使用原生 PHP 模板，支持布局和包含：
+### 布局 & 块
 
 ```php
-// views/layouts/main.php
+// app/views/layouts/main.php
 <!DOCTYPE html>
 <html>
-<head><title><?= $title ?></title></head>
+<head>
+    <title><?= $this->e($title) ?></title>
+    <?= $this->block('head') ?>
+</head>
 <body>
-    <?= $this->section('content') ?>
-    <?= $this->include('partials.footer') ?>
+    <header><?= $this->include('partials.header') ?></header>
+    <main><?= $this->block('content') ?></main>
+    <footer><?= $this->include('partials.footer') ?></footer>
+    <?= $this->block('scripts') ?>
 </body>
 </html>
 
-// views/home.php
+// app/views/home.php
 <?php $this->layout('layouts.main') ?>
-<h1><?= $title ?></h1>
-<p><?= $content ?></p>
+
+<?php $this->beginBlock('head') ?>
+<link rel="stylesheet" href="/css/home.css">
+<?php $this->endBlock() ?>
+
+<h1><?= $this->e($title) ?></h1>
+<p><?= $this->e($content) ?></p>
+
+<?php $this->beginBlock('scripts') ?>
+<script src="/js/home.js"></script>
+<?php $this->endBlock() ?>
+```
+
+### 部分包含
+
+```php
+// 包含子模板（内容自动加入页面）
+$this->include('partials.sidebar');
+
+// 包含并返回内容（不参与布局）
+$nav = $this->partial('partials.nav', ['active' => 'home']);
+
+// 控制器中独立渲染局部
+$sidebar = View::make('partials.sidebar')->fetch();
+```
+
+### 模板中的安全工具
+
+```php
+// HTML 转义（XSS 防护）
+<?= $this->e($userInput) ?>
+<?= $this->esc($potentialXss) ?>
+```
+
+### 全局共享数据
+
+```php
+// 应用启动时注册，所有视图可见
+View::share('appName', 'My App');
+View::share('currentUser', $user);
+
+// 模板中直接使用
+<?= $currentUser['name'] ?>
 ```
 
 ### 模板路径
 
-默认路径为 `app/views/`。支持主题切换：
+```php
+// 默认搜索路径：app/views/
+// 自动按顺序查找：$path/{name}.php → $path/{name}.html → $path/{name}.twig
+
+// 添加自定义路径
+View::addPath('/path/to/extra/views');          // 高优先级（插到头部）
+View::addPath('/path/to/vendor/views', true);   // 低优先级（追加末尾）
+
+// 主题支持
+// config.php: ['theme' => 'default']
+// → 自动追加 themes/default/ 到搜索路径头部
+
+// 注册自定义扩展名
+View::registerExtension('phtml');
+```
+
+### 内联模板
 
 ```php
-// config/config.php
+$html = View::renderString('<h1><?= $title ?></h1>', ['title' => 'Hello']);
+$html = View::renderString('
+<?php foreach($items as $item): ?>
+    <li><?= $this->e($item) ?></li>
+<?php endforeach ?>
+', ['items' => ['A', 'B', 'C']]);
+```
+
+### Twig 引擎
+
+使用 `.twig` 扩展名自动切换为 Twig 渲染器：
+
+```php
+// app/views/emails/welcome.twig
+<html>
+<body>
+    <h1>Hello {{ name }}!</h1>
+</body>
+</html>
+
+// 配置
+// config/twig.php
 return [
-    'theme' => 'default',   // 将自动追加 themes/default/ 到模板路径
+    'template_paths' => [
+        'emails' => base_path('app/views/emails'),
+    ],
+    'options' => [
+        'cache' => base_path('storage/cache/twig'),
+        'debug' => config('config.debug'),
+    ],
+    'extensions' => [
+        \App\Twig\MyExtension::class,
+    ],
 ];
 ```
+
+### 错误模板
+
+框架内置错误页面，位于 `src/resources/views/errors/`：
+- `error.php` — 通用错误
+- `exception.php` — 异常详情（含代码高亮）
+
+### 静态方法速查
+
+| 方法 | 说明 |
+|------|------|
+| `View::make($name, $data)` | 创建 View 实例 |
+| `View::render($name, $data, $return)` | 渲染并输出/返回 |
+| `View::exists($name)` | 检查模板是否存在 |
+| `View::first(...$names)` | 返回第一个存在的模板名 |
+| `View::renderString($str, $data)` | 渲染内联 PHP 字符串 |
+| `View::share($key, $value)` | 全局共享数据 |
+| `View::paths($path)` | 获取/添加搜索路径 |
+| `View::addPath($path, $append)` | 添加搜索路径 |
+| `View::clearPaths()` | 清空搜索路径 |
+| `View::registerExtension($ext)` | 注册自定义扩展名 |
+| `View::autoIncludePath($bool)` | 是否修改 include_path（默认关闭） |
 
 ---
 
