@@ -182,7 +182,7 @@ abstract class Model implements \ArrayAccess
         }
 
         if(isset($conditions['groupBy'])){
-            $query->orderBy($conditions['groupBy']);
+            $query->groupBy($conditions['groupBy']);
         }
 
         return $query;
@@ -250,14 +250,7 @@ abstract class Model implements \ArrayAccess
 
     public static function count($columnName = '*',$condition = []) : int
     {
-        $query = static::find($condition);
-        foreach ($condition as $key=>$where){
-            if(is_int($key)){
-                $query->where(...$where);
-            }else{
-                $query->where($key,$where);
-            }
-        }
+        $query = static::createQuery($condition);
         return $query->count($columnName);
     }
 

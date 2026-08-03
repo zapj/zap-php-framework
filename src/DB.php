@@ -122,7 +122,13 @@ class DB
             return static::connect($connection)->commit();
         }catch (PDOException $exception){
             static::connect($connection)->rollBack();
-            return false;
+            error_log(sprintf(
+                '[DB] Transaction failed: %s in %s:%d',
+                $exception->getMessage(),
+                $exception->getFile(),
+                $exception->getLine()
+            ));
+            throw $exception;
         }
     }
 
@@ -130,10 +136,13 @@ class DB
 
         $default_name = static::$default_name;
         static::$default_name = $connection;
-        if(is_callable($callback)){
-            $callback();
+        try {
+            if(is_callable($callback)){
+                $callback();
+            }
+        } finally {
+            static::$default_name = $default_name;
         }
-        static::$default_name = $default_name;
     }
 
     public static function raw($value): Expr

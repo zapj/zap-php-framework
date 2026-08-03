@@ -27,23 +27,26 @@ class ZapRequest
      */
     public function ip(string $default = '') {
         $clientIP = $default;
-        if (isset($_SERVER['HTTP_CLIENT_IP'])) {
-            $clientIP = $_SERVER['HTTP_CLIENT_IP'];
-        } elseif (isset($_SERVER['HTTP_CF_CONNECTING_IP'])) {
-            $clientIP = $_SERVER['HTTP_CF_CONNECTING_IP'];
-        } elseif (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-            $clientIP = $_SERVER['HTTP_X_FORWARDED_FOR'];
-        } elseif (isset($_SERVER['HTTP_X_FORWARDED'])) {
-            $clientIP = $_SERVER['HTTP_X_FORWARDED'];
-        } elseif (isset($_SERVER['HTTP_FORWARDED_FOR'])) {
-            $clientIP = $_SERVER['HTTP_FORWARDED_FOR'];
-        } elseif (isset($_SERVER['HTTP_FORWARDED'])) {
-            $clientIP = $_SERVER['HTTP_FORWARDED'];
-        } elseif (isset($_SERVER['REMOTE_ADDR'])) {
+
+        // Use REMOTE_ADDR as fallback to avoid IP spoofing via proxy headers
+        if (isset($_SERVER['REMOTE_ADDR']) && filter_var($_SERVER['REMOTE_ADDR'], FILTER_VALIDATE_IP)) {
             $clientIP = $_SERVER['REMOTE_ADDR'];
         }
 
-        return $clientIP;
+        // Only trust proxy headers if explicitly enabled
+        if (config('config.trusted_proxies', false)) {
+            $trustedHeaders = config('config.trusted_headers', ['HTTP_X_FORWARDED_FOR']);
+            foreach ($trustedHeaders as $header) {
+                if (!empty($_SERVER[$header])) {
+                    // X-Forwarded-For can be comma-separated; take the first (client) IP
+                    $ips = explode(',', $_SERVER[$header]);
+                    $clientIP = trim($ips[0]);
+                    break;
+                }
+            }
+        }
+
+        return filter_var($clientIP, FILTER_VALIDATE_IP) ? $clientIP : $default;
     }
 
     /**

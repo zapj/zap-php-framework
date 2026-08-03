@@ -567,7 +567,13 @@ class Query
         if (!is_array($params)) {
             $params = array($params);
         }
-        $this->where[] = $this->db->quoteColumn($column) . " " . $in . ' (' . implode(',', $params) . ')';
+        $placeholders = [];
+        foreach ($params as $value) {
+            $placeholder = ':_in' . count($this->params);
+            $placeholders[] = $placeholder;
+            $this->params[$placeholder] = $value;
+        }
+        $this->where[] = $this->db->quoteColumn($column) . " " . $in . ' (' . implode(',', $placeholders) . ')';
     }
 
     private function prepareJoinString(): string

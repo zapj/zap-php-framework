@@ -36,9 +36,15 @@ class View {
         $this->viewName = $name;
 
         if(($theme = config('config.theme',false)) !== false){
-            array_unshift(static::$templatePaths,themes_path("$theme"));
+            $themePath = themes_path("$theme");
+            if(!in_array($themePath, static::$templatePaths, true)){
+                array_unshift(static::$templatePaths, $themePath);
+            }
         }else{
-            array_unshift(static::$templatePaths,base_path('app/views'));
+            $defaultPath = base_path('app/views');
+            if(!in_array($defaultPath, static::$templatePaths, true)){
+                array_unshift(static::$templatePaths, $defaultPath);
+            }
         }
         if(config('config.set_theme_include_path',false) === false){
             set_include_path(get_include_path() . PATH_SEPARATOR .  join(PATH_SEPARATOR,static::$templatePaths));

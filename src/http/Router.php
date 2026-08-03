@@ -15,6 +15,10 @@ class Router
 
     const NOT_FOUND = 1;
     const FOUND = 2;
+
+    /** @var string 路由缓存文件路径 */
+    const CACHE_FILE = '/var/cache/routes.php';
+
     /**
      * @var array 路由规则
      */
@@ -55,9 +59,13 @@ class Router
     public static function create(): Router
     {
         app()->router = new Router();
-        //加载路由配置
+        // 加载路由配置
         $route_file = config_path('route.php');
         if(is_file($route_file)){
+            // 尝试加载缓存
+            if (static::loadCachedRoutes(app()->router)) {
+                return app()->router;
+            }
             require_once $route_file;
         }
         return app()->router;
@@ -378,5 +386,90 @@ class Router
     public static function convertToName($name): string
     {
         return str_replace(['-', '_'], '',ucwords($name,'-_'));
+    }
+
+    /**
+     * 获取路由缓存文件路径
+     */
+    protected static function getCacheFilePath(): string
+    {
+        return base_path(static::CACHE_FILE);
+    }
+
+    /**
+     * 编译路由并写入缓存文件
+     * 在部署后调用一次以提升性能
+     *
+     * @return bool
+     */
+    public static function cacheRoutes(): bool
+    {
+        if (!is_file(config_path('route.php'))) {
+            return false;
+        }
+
+        // 创建一个临时 Router 来收集路由
+        $tempRouter = new self();
+        require config_path('route.php');
+
+        $cachePath = static::getCacheFilePath();
+        $dir = dirname($cachePath);
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0777, true);
+        }
+
+        $cache = sprintf(
+            '<?php return %s;',
+            var_export([
+                'routes' => $tempRouter->routes,
+                'middlewares' => $tempRouter->middlewares,
+                'notFoundCallback' => $tempRouter->notFoundCallback,
+            ], true)
+        );
+
+        return @file_put_contents($cachePath, $cache) !== false;
+    }
+
+    /**
+     * 从缓存文件加载路由
+     *
+     * @param Router $router
+     * @return bool 是否成功从缓存加载
+     */
+    protected static function loadCachedRoutes(Router $router): bool
+    {
+        $cachePath = static::getCacheFilePath();
+        if (!is_file($cachePath)) {
+            return false;
+        }
+
+        // 检查缓存是否过期（路由文件更新时）
+        $routeFile = config_path('route.php');
+        if (is_file($routeFile) && filemtime($cachePath) < filemtime($routeFile)) {
+            @unlink($cachePath);
+            return false;
+        }
+
+        $cached = include $cachePath;
+        if (!is_array($cached)) {
+            return false;
+        }
+
+        $router->routes = $cached['routes'] ?? [];
+        $router->middlewares = $cached['middlewares'] ?? [];
+        $router->notFoundCallback = $cached['notFoundCallback'] ?? [];
+
+        return true;
+    }
+
+    /**
+     * 清除路由缓存
+     */
+    public static function clearRouteCache(): void
+    {
+        $cachePath = static::getCacheFilePath();
+        if (is_file($cachePath)) {
+            @unlink($cachePath);
+        }
     }
 }

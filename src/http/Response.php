@@ -8,6 +8,9 @@ class Response {
     private $headers = [];
     private $content;
 
+    /** @var bool 是否在 send() 时调用 exit，设为 false 可提高可测试性 */
+    public static bool $shouldExit = true;
+
     public function __construct($content = null, $statusCode = 200, $headers = []) {
         $this->content = $content;
         $this->statusCode = $statusCode;
@@ -100,7 +103,9 @@ class Response {
             header(strtoupper($header) . ': ' . $value);
         }
         echo $this->content;
-        exit;
+        if (static::$shouldExit) {
+            exit;
+        }
     }
 
     public function flash($message, $type = Session::INFO): Response

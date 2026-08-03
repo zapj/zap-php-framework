@@ -209,7 +209,7 @@ class App implements \ArrayAccess
         }
 
         if(!class_exists('\Monolog\Logger')){
-            throw new Exception('Monolog is not installed,  Please run \'composer require monolog/monolog\'');
+            return $this->logger[$name] = new \zap\log\SimpleLogger($name);
         }
         $handlerClass = config("log.{$name}.handler");
         try{

@@ -149,6 +149,14 @@ class ZPDO extends PDO
         $this->tablePrefix = $prefix;
     }
 
+    public function unPrefixTable($table): string
+    {
+        if($this->tablePrefix && str_starts_with($table, $this->tablePrefix)){
+            return substr($table, strlen($this->tablePrefix));
+        }
+        return $table;
+    }
+
     public function prepareSQL($sql){
         if($this->tablePrefix){
             return preg_replace_callback('/\{([\w\-\. ]+)\}/',
@@ -542,23 +550,24 @@ class ZPDO extends PDO
     }
 
     public function getTableStructure(string $table){
+        $table = $this->quoteTable($table);
         if($this->driver === 'sqlite'){
-            return $this->query("SELECT sql FROM sqlite_master where name='$table'")->fetchColumn();
+            return $this->query("SELECT sql FROM sqlite_master where name=? ", [$this->unPrefixTable($table)])->fetchColumn();
         }else if($this->driver === 'mysql'){
-            $sql = 'SHOW CREATE TABLE ' . $table;
-            return $this->query($sql)->fetchColumn();
+            return $this->query("SHOW CREATE TABLE {$table}")->fetchColumn(1);
         }
         return '';
     }
 
     public function getTableColumns(string $table){
+        $table = $this->quoteTable($table);
         if($this->driver === 'sqlite'){
-            return $this->query("SELECT sql FROM sqlite_master where name='$table'")->fetchColumn();
+            $sql = "PRAGMA table_info({$table})";
+            return $this->query($sql)->fetchAll();
         }else if($this->driver === 'mysql'){
-            $sql = 'SHOW COLUMNS FROM ' . $table;
-            return $this->query($sql)->fetchColumn();
+            return $this->query("SHOW COLUMNS FROM {$table}")->fetchAll();
         }
-        return '';
+        return [];
     }
 
 }
