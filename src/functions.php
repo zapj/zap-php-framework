@@ -216,8 +216,34 @@ function logger($name = 'app')
     return app()->getLogger($name);
 }
 
-function trans($key,$params=null,$value=null){
-    return \zap\i18n\Language::trans($key,$params,$value);
+function trans($key, $params = null, $value = null)
+{
+    return \zap\i18n\Language::trans($key, $params, $value);
+}
+
+/**
+ * 翻译别名（推荐用法）
+ *
+ * @param string $key    文件名.key 格式，如 'validator.rule_email'
+ * @param array  $params 替换参数 ['key' => 'value']
+ * @return string
+ */
+function __($key, $params = [])
+{
+    return \zap\i18n\Language::trans($key, $params);
+}
+
+/**
+ * 复数翻译
+ *
+ * @param string $key    文件名.key 格式
+ * @param int    $count  数量
+ * @param array  $params 替换参数
+ * @return string
+ */
+function trans_choice($key, $count, $params = [])
+{
+    return \zap\i18n\Language::transChoice($key, $count, $params);
 }
 
 

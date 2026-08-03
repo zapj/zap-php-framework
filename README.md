@@ -424,6 +424,139 @@ $v = Validator::make($data)
 
 ---
 
+## 国际化 (i18n)
+
+框架内置灵活的国际化组件，支持多语言文件加载、参数替换、回退语言和复数翻译。
+
+### 基本使用
+
+```php
+use zap\i18n\Language;
+
+// 设置当前语言
+Language::locale('zh_CN');
+
+// 获取翻译
+echo __('messages.welcome', ['name' => 'Zap']);    // "欢迎 Zap"
+echo trans('messages.welcome', ['name' => 'Zap']);  // 同上
+echo __('messages.title');                            // 无参数
+echo __('messages.greeting', 'Zap');                  // 旧式 {value} 替换
+
+// 复数翻译
+echo trans_choice('messages.apples', 1);    // "1 个苹果"
+echo trans_choice('messages.apples', 5);    // "5 个苹果"
+```
+
+### 语言文件
+
+框架支持 PHP 和 JSON 两种格式，存放在 `resources/languages/{locale}/` 目录下：
+
+**PHP 格式** — `resources/languages/zh_CN/messages.php`：
+```php
+<?php
+return [
+    'welcome' => '欢迎 {name}',
+    'title'   => '我的网站',
+    'apples'  => [
+        'one'   => '{count} 个苹果',
+        'other' => '{count} 个苹果',
+    ],
+];
+```
+
+**JSON 格式** — `resources/languages/en/messages.json`：
+```json
+{
+    "welcome": "Welcome {name}",
+    "title": "My Website",
+    "apples": {
+        "one": "{count} apple",
+        "other": "{count} apples"
+    }
+}
+```
+
+### 配置方法
+
+```php
+use zap\i18n\Language;
+
+// 获取 / 设置当前语言
+$locale = Language::locale();           // 'zh_CN'
+Language::locale('en');                 // 切换到英文
+
+// 设置回退语言（当前语言找不到翻译时自动尝试）
+Language::fallback('en');
+
+// 添加自定义语言文件路径
+Language::addPath('/my-app/resources/languages');
+
+// 获取所有可用语言
+$locales = Language::availableLocales();  // ['zh_CN', 'en']
+
+// 获取所有搜索路径
+$paths = Language::getPaths();
+```
+
+### 参数替换
+
+支持多种参数格式，通过 `{key}` 占位符替换：
+
+```php
+// 数组参数：{key} → value
+__('messages.greeting', ['name' => 'Zap', 'role' => '管理员']);
+// "你好 Zap，你的角色是 管理员"
+
+// 字符串参数（旧式，仅替换 {value}）
+__('messages.input', 'hello');
+// 消息中 {value} 被替换为 hello
+```
+
+### 复数翻译
+
+语言文件中定义 `.one` / `.other` 后缀区分单复数：
+
+```php
+// messages.php
+return [
+    'comment' => [
+        'one'   => '{count} 条评论',
+        'other' => '{count} 条评论',
+    ],
+];
+
+// 使用
+echo trans_choice('messages.comment', 1);  // "1 条评论"
+echo trans_choice('messages.comment', 8);  // "8 条评论"
+```
+
+> 中文通常不需要区分单复数，但框架保留此能力以支持英文等多语言场景。
+
+### 动态消息注册
+
+```php
+// 运行时添加翻译（不依赖文件）
+Language::with(['app.name' => '我的应用', 'app.version' => '1.0']);
+// 或
+Language::set('app.author', 'Zap Team');
+
+// 获取
+__('app.name');  // "我的应用"
+
+// 检查是否存在
+Language::has('app.name');  // true
+```
+
+### Helper 函数速查
+
+| 函数 | 说明 |
+|------|------|
+| `__($key, $params)` | 推荐用法：获取翻译（参数数组） |
+| `trans($key, $params, $value)` | 翻译（支持旧式 {value} 替换） |
+| `trans_choice($key, $count, $params)` | 复数翻译 |
+
+---
+
 ## 数据库
 
 ### 配置
