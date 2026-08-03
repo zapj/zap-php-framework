@@ -562,6 +562,27 @@ Route::get('/dashboard', 'DashboardController@index')->middleware('auth');
 
 ## 控制台命令
 
+### 入口文件 `console`
+
+```php
+#!/usr/bin/env php
+<?php
+
+define('ROOT_PATH', dirname(__DIR__));
+define('APP_PATH', ROOT_PATH . '/app');
+define('CONFIG_PATH', ROOT_PATH . '/config');
+define('VAR_PATH', ROOT_PATH . '/var');
+define('VENDOR_PATH', ROOT_PATH . '/vendor');
+
+require_once VENDOR_PATH . '/autoload.php';
+
+$console = new \zap\console\Console(ROOT_PATH);
+$console->addCommand('app/commands', 'app');
+exit($console->execute());
+```
+
+### 创建命令
+
 ```php
 namespace App\Commands;
 
@@ -575,19 +596,194 @@ class HelloCommand extends Command
     {
         $this->setName('hello')
              ->setDescription('输出欢迎信息')
-             ->addArgument('name', '你的名字');
+             ->addArgument('name', '名称', true)
+             ->addArgument('greeting', '问候语', false, 'Hello')
+             ->addOption('uppercase', 'u', '转为大写输出');
     }
 
     public function execute(Input $input, Output $output): int
     {
-        $name = $input->getArgument('name') ?? 'World';
-        $output->writeln("Hello, $name!");
-        return 0;
+        $name = $input->getArgument(0);
+        $greeting = $input->getArgument(1) ?? 'Hello';
+
+        $message = "{$greeting}, {$name}!";
+
+        if ($input->getOption('uppercase')) {
+            $message = strtoupper($message);
+        }
+
+        $output->success($message);
+        return self::SUCCESS;
     }
 }
-
-// 运行: php console hello zap
 ```
+
+### 运行命令
+
+```bash
+# 基本执行
+php console hello zap
+
+# 传入多个参数
+php console hello zap "Good morning"
+
+# 使用选项
+php console hello zap -u
+php console hello zap --uppercase
+
+# 查看帮助
+php console hello -h
+php console hello --help
+
+# 调试模式（显示详细输出）
+php console hello zap -v     # 一般详情
+php console hello zap -vv    # 更详细
+php console hello zap -vvv   # 调试级别
+
+# 列表所有可用命令
+php console
+php console list
+```
+
+### 命令配置 API
+
+```php
+public function configure(): void
+{
+    $this
+        // 命令名
+        ->setName('hello')
+        // 描述（在列表命令中显示）
+        ->setDescription('输出欢迎信息')
+        // 位置参数：名称、描述、是否必填、默认值
+        ->addArgument('name', '名称', true)
+        ->addArgument('title', '标题', false, 'Mr.')
+        // 命名选项：名称、短选项、描述、默认值
+        ->addOption('uppercase', 'u', '转为大写')
+        ->addOption('times', 't', '重复次数', 1);
+}
+```
+
+### Input API
+
+```php
+class MyCommand extends Command
+{
+    public function execute(Input $input, Output $output): int
+    {
+        // 位置参数（0-based 索引）
+        $firstName = $input->getArgument(0);
+        $secondArg = $input->getArgument(1, '默认值');
+        $allArgs   = $input->getArguments();  // 所有位置参数数组
+
+        // 命名选项
+        $uppercase = $input->getOption('uppercase');
+        $times     = $input->getOption('times', 1);
+        $allOpts   = $input->getOptions();
+
+        // 检查是否存在
+        $input->hasOption('verbose');
+        $input->hasParam('v');
+
+        // 兼容旧接口（1-based）
+        $first = $input->getParam(1);
+
+        return self::SUCCESS;
+    }
+}
+```
+
+### Output API
+
+```php
+public function execute(Input $input, Output $output): int
+{
+    // 基本输出
+    $output->writeln('普通文本');
+    $output->write('不换行...');
+
+    // 带颜色标签的输出
+    $output->writeln('<info>信息</info>');
+    $output->writeln('<error>错误</error>');
+    $output->writeln('<warning>警告</warning>');
+    $output->writeln('<success>成功</success>');
+    $output->writeln('<debug>调试信息</debug>');
+
+    // 快捷彩色方法
+    $output->info('信息消息');
+    $output->error('错误消息');     // 输出到 stderr
+    $output->warning('警告消息');
+    $output->success('成功消息');
+    $output->debug('调试消息');
+
+    // 格式化输出
+    $output->printf('共处理 %d 条记录', $count);
+
+    // 按详细级别输出
+    $output->writelnV('详细信息（-v）');    // 需 -v
+    $output->writelnVV('更详细（-vv）');      // 需 -vv
+    $output->writelnVVV('调试详情（-vvv）');  // 需 -vvv
+
+    // 检测颜色支持
+    if ($output->hasColorSupport()) {
+        $output->writeln('<red>红色文字</red>');
+    }
+
+    return self::SUCCESS;
+}
+```
+
+### 颜色样式
+
+当终端支持颜色时，以下标签自动转为 ANSI 彩色输出（不支持时自动去除标签）：
+
+| 标签 | 效果 | 颜色 |
+|---|---|---|
+| `<info>...</info>` | 信息 | 绿色 |
+| `<success>...</success>` | 成功 | 绿色 |
+| `<error>...</error>` | 错误 | 红色 |
+| `<warning>...</warning>` | 警告 | 黄色 |
+| `<comment>...</comment>` | 注释 | 黄色 |
+| `<debug>...</debug>` | 调试 | 灰色 |
+| `<red>...</red>` | 红色 | 红色 |
+| `<green>...</green>` | 绿色 | 绿色 |
+| `<yellow>...</yellow>` | 黄色 | 黄色 |
+| `<blue>...</blue>` | 蓝色 | 蓝色 |
+| `<magenta>...</magenta>` | 品红 | 品红 |
+| `<cyan>...</cyan>` | 青色 | 青色 |
+| `<white>...</white>` | 白色 | 白色 |
+| `<gray>...</gray>` | 灰色 | 灰色 |
+
+> 设置环境变量 `NO_COLOR=1` 可禁用彩色输出。
+
+### 注册命令目录
+
+```php
+$console = new \zap\console\Console(ROOT_PATH);
+
+// 注册命令目录（路径 => 命名空间）
+$console->addCommand('app/commands', 'app');
+
+// 多个命令目录
+$console->addCommand('vendor/my-package/src/commands', 'my-package');
+
+$console->execute();
+```
+
+### 命令命名规则
+
+- 命令类放在注册的目录下，文件名即命令名
+- `app/commands/HelloCommand.php` → 命令名 `HelloCommand`
+- 运行时：`php console HelloCommand arg1`
+- 支持 `vendor:CommandName` 格式（适合第三方包）
+
+### 自定义默认命令
+
+```php
+$console->setDefaultCommand(MyDefaultCommand::class);
+```
+
+> `--version` / `-V` 为内置命令，直接输出版本号，无需注册。
 
 ---
 
