@@ -557,6 +557,149 @@ Language::has('app.name');  // true
 
 ---
 
+## HTTP 网络请求
+
+框架提供 `Requests`（全功能）和 `Curl`（精简兼容）两种 HTTP 客户端，后者内部复用前者。
+
+### 基本请求
+
+```php
+use zap\net\Requests;
+
+// GET 请求
+$response = Requests::get('https://api.example.com/users', ['page' => 1]);
+echo $response->body();       // 响应体
+echo $response->status();     // 200
+
+// POST 表单
+$response = Requests::post('https://api.example.com/login', [
+    'username' => 'admin',
+    'password' => 'secret',
+]);
+
+// PUT / PATCH / DELETE
+$response = Requests::put('https://api.example.com/users/1', ['name' => '新名称']);
+$response = Requests::delete('https://api.example.com/users/1');
+```
+
+### Response 对象
+
+所有请求方法返回 `zap\net\Response` 对象：
+
+```php
+$r = Requests::get('https://api.example.com/data');
+
+$r->body();              // string — 响应体
+(string) $r;             // 同 body()，可当字符串用
+$r->json();              // array — JSON 解析
+$r->json(false);         // object — JSON 解析为对象
+$r->status();            // int — HTTP 状态码 (200, 404, …)
+$r->ok();                // bool — 2xx 检查
+$r->clientError();       // bool — 4xx 检查
+$r->serverError();       // bool — 5xx 检查
+$r->contentType();       // string — Content-Type
+$r->totalTime();         // float — 请求耗时（秒）
+$r->effectiveUrl();      // string — 最终 URL（跟随重定向后）
+$r->info();              // array — curl_getinfo 完整信息
+```
+
+### JSON 请求
+
+```php
+// 发送 JSON
+$r = Requests::json('POST', 'https://api.example.com/data', [
+    'title' => 'Hello',
+    'body'  => 'Content',
+]);
+
+// 快捷方法
+$r = Requests::postJson('https://api.example.com/data', ['key' => 'value']);
+$data = Requests::getJson('https://api.example.com/data', ['page' => 1]);
+```
+
+### 自定义请求头
+
+```php
+$r = Requests::post('https://api.example.com/data', $data, [
+    'Authorization: Bearer token123',
+    'X-Custom-Header: value',
+    'Accept: application/json',
+]);
+```
+
+### 请求选项
+
+```php
+$r = Requests::post('https://api.example.com/data', $data, $headers, [
+    'timeout'          => 30,    // 超时（秒）
+    'connect_timeout'  => 5,     // 连接超时（秒）
+    'ssl_verify'       => false, // 跳过 SSL 验证（不推荐）
+    'follow_redirects' => true,  // 跟随重定向
+    'max_redirects'    => 5,     // 最大重定向次数
+    'cookie'           => 'key=value',           // Cookie 字符串
+    'cookie_file'      => '/tmp/cookies.txt',    // Cookie 文件路径
+    'auth'             => ['username', 'pass'],  // HTTP Basic Auth
+    'referer'          => 'https://example.com', // Referer
+]);
+```
+
+### 文件上传
+
+```php
+$r = Requests::multipart('https://api.example.com/upload', [
+    'title' => '我的图片',         // 普通字段
+], [
+    'image' => '/path/to/photo.jpg',  // 文件字段
+]);
+```
+
+### 并发请求
+
+```php
+$responses = Requests::multi([
+    ['method' => 'GET',  'url' => 'https://api.example.com/users'],
+    ['method' => 'GET',  'url' => 'https://api.example.com/posts'],
+    ['method' => 'POST', 'url' => 'https://api.example.com/log', 'params' => ['event' => 'visit']],
+]);
+
+foreach ($responses as $r) {
+    echo $r->status() . ': ' . $r->body();
+}
+```
+
+### 全局配置
+
+```php
+Requests::setUserAgent('MyApp/1.0');
+Requests::setDefaultTimeout(60);
+Requests::setDefaultConnectTimeout(15);
+Requests::setCaCert('/custom/cacert.pem');
+```
+
+### Curl 精简版（向后兼容，返回字符串）
+
+```php
+use zap\net\Curl;
+
+$html = Curl::get('https://example.com/page', ['id' => 1]);
+$result = Curl::post('https://api.example.com/login', ['user' => 'admin', 'pass' => '123']);
+```
+
+### 错误处理
+
+```php
+use zap\exception\CurlException;
+
+try {
+    $r = Requests::get('https://down.example.com/api');
+} catch (CurlException $e) {
+    echo '错误码: ' . $e->getCode();
+    echo '错误信息: ' . $e->getMessage();
+}
+```
+
+---
+
 ## 数据库
 
 ### 配置
