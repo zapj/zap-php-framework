@@ -910,57 +910,252 @@ echo Url::secure('/admin/login');    // https://localhost/admin/login
 ### 配置
 
 ```php
+// .env
+DB_DRIVER=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=test
+DB_USERNAME=root
+DB_PASSWORD=
+DB_PREFIX=zap_
+DB_CHARSET=utf8mb4
+```
+
+```php
 // config/database.php
 return [
     'default' => 'mysql',
-    'connections' => [
-        'mysql' => [
-            'driver'    => 'mysql',
-            'host'      => '127.0.0.1',
-            'port'      => '3306',
-            'database'  => 'test',
-            'username'  => 'root',
-            'password'  => '',
-            'charset'   => 'utf8mb4',
-            'prefix'    => 'zap_',
-        ],
-        // PostgreSQL, SQLite 同样支持
+    'mysql' => [
+        'driver'   => env('DB_DRIVER', 'mysql'),
+        'host'     => env('DB_HOST', '127.0.0.1'),
+        'port'     => env('DB_PORT', '3306'),
+        'dbname'   => env('DB_DATABASE', 'test'),
+        'username' => env('DB_USERNAME', 'root'),
+        'password' => env('DB_PASSWORD', ''),
+        'charset'  => env('DB_CHARSET', 'utf8mb4'),
+        'prefix'   => env('DB_PREFIX', 'zap_'),
     ],
+    // PostgreSQL 同样支持
 ];
 ```
 
-### Query Builder（参数化查询，防 SQL 注入）
+### Query Builder（全参数化查询，防 SQL 注入）
+
+#### 基础 CRUD
 
 ```php
 use zap\DB;
 
-// 查询
-$users = DB::table('users')->where('status', 1)->get();
-
-// 条件查询
-$posts = DB::table('posts')
-    ->where('status', 'published')
-    ->whereIn('category_id', [1, 2, 3])
-    ->whereLike('title', '%框架%')
-    ->whereBetween('created_at', '2024-01-01', '2024-12-31')
+// SELECT
+$users = DB::table('users')
+    ->select('id', 'name', 'email')
+    ->where('status', 1)
     ->orderBy('id', 'desc')
     ->limit(10)
     ->get();
 
-// 聚合
-$count = DB::table('users')->count();
-$max   = DB::table('orders')->max('amount');
-$min   = DB::table('orders')->min('amount');
-$sum   = DB::table('orders')->sum('amount');
-$avg   = DB::table('orders')->avg('amount');
+// 单行查询
+$user = DB::table('users')->where('id', 1)->first();
+$user = DB::table('users')->find(1);
+$name = DB::table('users')->where('id', 1)->value('name');  // 单个字段值
 
-// 增删改
-DB::table('users')->insert(['name' => '张三', 'email' => 'zs@example.com']);
-DB::table('users')->where('id', 1)->update(['status' => 1]);
+// 列提取
+$ids = DB::table('users')->pluck('id');                    // [1, 2, 3, ...]
+$map = DB::table('users')->pluck('name', 'id');            // [1=>'张三', 2=>'李四']
+
+// INSERT
+$id = DB::table('users')->insert(['name' => '张三', 'email' => 'zs@example.com']);
+
+// INSERT IGNORE
+DB::table('users')->insertOrIgnore(['email' => 'zs@example.com']);
+
+// UPDATE
+DB::table('users')->where('id', 1)->update(['name' => '张三（改名）']);
+
+// increment / decrement
+DB::table('posts')->where('id', 1)->increment('views');
+DB::table('posts')->where('id', 1)->increment('views', 5, ['updated_by' => 1]);
+DB::table('stock')->where('id', 1)->decrement('quantity', 1);
+
+// DELETE
 DB::table('users')->where('id', 1)->delete();
+```
 
-// 分页
-$paginator = DB::table('posts')->paginate(15);
+#### WHERE 条件
+
+```php
+// 基础条件
+->where('status', 'published')              // status = 'published'
+->where('age', '>', 18)                     // age > 18
+->where('age', '>=', 18)                    // age >= 18
+->where('name', 'LIKE', '%张%')              // name LIKE '%张%'
+
+// OR 条件
+->where('status', 1)->orWhere('role', 'admin')
+
+// IN / NOT IN
+->whereIn('category_id', [1, 2, 3])
+->whereNotIn('category_id', [4, 5])
+
+// BETWEEN
+->whereBetween('created_at', ['2024-01-01', '2024-12-31'])
+->whereNotBetween('price', [100, 500])
+
+// NULL
+->whereNull('deleted_at')
+->whereNotNull('email_verified_at')
+->orWhereNull('parent_id')
+
+// 列与列比较
+->whereColumn('updated_at', '>', 'created_at')
+->orWhereColumn('a', 'b')
+
+// 子查询 / 嵌套条件
+->where(function ($query) {
+    $query->where('status', 'active')
+          ->orWhere('role', 'admin');
+})
+
+// 原始表达式（慎用，避免用户输入）
+use zap\db\Expr;
+->where('views', '>', new Expr('likes * 2'))
+```
+
+#### 聚合函数
+
+```php
+$count  = DB::table('users')->count();
+$max    = DB::table('orders')->max('amount');
+$min    = DB::table('orders')->min('amount');
+$sum    = DB::table('orders')->sum('amount');
+$avg    = DB::table('orders')->avg('amount');
+$exists = DB::table('users')->where('email', 'test@example.com')->exists();
+```
+
+#### JOIN
+
+```php
+DB::table('posts')
+    ->join('users', 'u', 'posts.user_id = u.id')       // INNER JOIN
+    ->leftJoin('categories', 'c', 'posts.category_id = c.id')
+    ->rightJoin('tags', 't', 'posts.tag_id = t.id')
+    ->select('posts.*', 'u.name as author')
+    ->get();
+```
+
+#### GROUP BY / HAVING / DISTINCT
+
+```php
+DB::table('orders')
+    ->select('user_id', DB::raw('SUM(amount) as total'))
+    ->groupBy('user_id')
+    ->having('total', '>', 100)
+    ->get();
+
+DB::table('users')->distinct()->pluck('role');
+```
+
+#### 排序
+
+```php
+->orderBy('created_at', 'desc')
+->orderBy('id', 'asc')
+->orderByDesc('created_at')
+->latest('updated_at')
+->oldest('id')
+->inRandomOrder()            // RAND()
+->reorder('priority', 'desc') // 清除已有 ORDER BY 后重排
+```
+
+#### 分页
+
+```php
+// 返回 Pagination 实例（含元数据和 HTML 渲染）
+$pager = DB::table('posts')->paginate(15);
+echo $pager->render();
+
+// 手动 offset / limit
+DB::table('posts')->limit(15)->offset(30)->get();
+```
+
+#### 大数据集
+
+```php
+// 分块处理，避免内存溢出
+DB::table('logs')->chunk(500, function ($rows, $page) {
+    foreach ($rows as $row) {
+        // 处理每一行...
+    }
+});
+
+// 逐行处理
+DB::table('users')->each(function ($user, $index) {
+    echo $user->name;
+});
+```
+
+#### UNION
+
+```php
+$first  = DB::table('articles')->where('status', 'published');
+$second = DB::table('archives')->where('status', 'published');
+$results = $first->union($second)->get();
+$results = $first->unionAll($second)->get();
+```
+
+#### 调试
+
+```php
+// 查看生成的 SQL（参数已替换，仅供调试）
+DB::table('users')->where('id', 1)->toSql();    // SELECT * FROM `zap_users` WHERE `id`=1
+
+// dump 调试
+DB::table('users')->where('id', 1)->dump();      // 输出 SQL 并继续
+DB::table('users')->where('id', 1)->dd();         // 输出 SQL 并终止
+
+// 获取绑定参数
+$bindings = DB::table('users')->where('id', 1)->getBindings();
+```
+
+### 直接 ZPDO 操作
+
+```php
+$db = DB::connection();
+
+// 原始查询
+$db->select('SELECT * FROM {users} WHERE status=?', [1]);
+$db->get('SELECT * FROM {users} WHERE id=?', [1]);          // 单行
+$db->getAll('SELECT * FROM {users}');                       // 全部
+$db->value('SELECT name FROM {users} WHERE id=?', [1]);     // 单列值
+
+// CRUD
+$id = $db->insert('users', ['name' => '张三', 'email' => 'zs@a.com']);
+$db->update('users', ['status' => 1], 'id=?', [10]);
+$db->delete('users', 'status=0 AND created_at < ?', ['2023-01-01']);
+$rows = $db->count('users', 'status=?', [1]);
+
+// 批量插入
+$db->batchInsert('users', [
+    ['name' => 'A', 'email' => 'a@a.com'],
+    ['name' => 'B', 'email' => 'b@b.com'],
+]);
+
+// Upsert（MySQL/PGSQL）
+$db->upsert('users', ['id' => 1, 'name' => '新名字'], ['name' => '新名字']);
+
+// REPLACE INTO
+$db->replace('users', ['id' => 1, 'name' => '替换']);
+
+// Key-value pair
+$db->keyPair('settings', 'key, value');
+
+// Schema 操作
+$db->getTables();
+$db->getTableStructure('users');
+$db->getTableColumns('users');
+$db->renameTable('old_users', 'new_users');
+$db->dropTable('temp');
+$db->truncateTable('logs');
 ```
 
 ### Model（ActiveRecord 风格）
@@ -972,52 +1167,138 @@ use zap\db\Model;
 
 class UserModel extends Model
 {
-    protected string $table = 'users';
-    protected string $primaryKey = 'id';
-}
+    protected $table = 'users';
+    protected $primaryKey = 'id';
 
-// 基本操作
-$user = UserModel::find(1);
-$user = UserModel::findOrFail(1);        // 未找到抛异常
-$user = UserModel::findBy('email', 'test@example.com');
+    // 自动管理时间戳
+    protected $timestamps = true;
+
+    // 批量赋值白名单
+    protected $fillable = ['name', 'email', 'status'];
+
+    // 批量赋值黑名单
+    // protected $guarded = ['id', 'password'];
+
+    // 类型转换
+    protected $casts = [
+        'is_active'  => 'boolean',
+        'metadata'   => 'json',
+        'login_count'=> 'int',
+    ];
+}
+```
+
+#### 查找
+
+```php
+// 按主键查找
+$user = UserModel::findById(1);          // 返回 null 或 实例
+$user = UserModel::findOrFail(1);        // 未找到抛 RuntimeException
+$user = UserModel::findOrNew(1);         // 未找到返回新实例（带 id）
+
+// findBy 动态方法
+$user  = UserModel::findByEmail('zs@a.com');              // 返回数组
+$user  = UserModel::findByIdAndStatus(1, 'active');      // 多条件
 
 // 查询
-$users = UserModel::all();
-$users = UserModel::where('status', 1)->get();
-$users = UserModel::limit(10)->offset(0)->orderBy('id', 'desc')->get();
+$users = UserModel::all();               // 全部
+$users = UserModel::first();             // 第一条
+$count = UserModel::countBy(['status' => 1]);
+$exists = UserModel::exists(['email' => 'zs@a.com']);
+UserModel::destroy(5);                   // 按主键删除
+```
 
-// 增删改
-$user = UserModel::create(['name' => '李四', 'email' => 'ls@example.com']);
-$user->save(['name' => '王五']);
+#### 实例操作
+
+```php
+$user = new UserModel();
+$user->name  = '新用户';
+$user->email = 'new@example.com';
+$user->save();
+
+// 批量赋值（受 fillable/guarded 约束）
+$user = new UserModel();
+$user->fill(['name' => '张三', 'email' => 'zs@a.com']);
+$user->save();
+
+// 更新
+$user = UserModel::findById(1);
+$user->name = '改名';
+$user->save();
+
+// 删除
+$user = UserModel::findById(1);
 $user->delete();
-$user->forceDelete();    // 如果有软删除
 
-// 批量操作
-UserModel::updateAll(['status' => 0], ['role' => 'guest']);
-UserModel::deleteAll(['status' => -1]);
+// 刷新
+$user->refresh();       // 用数据库数据覆盖当前实例
+$fresh = $user->fresh(); // 返回新的实例
+```
+
+#### 时间戳
+
+```php
+class PostModel extends Model
+{
+    protected $timestamps = true;
+    // 自动维护 created_at 和 updated_at
+    // 列名可通过 const CREATED_AT / UPDATED_AT 自定义
+}
+```
+
+#### 序列化
+
+```php
+$arr  = $user->toArray();      // ['id' => 1, 'name' => '张三', ...]
+$json = $user->toJson();       // JSON 字符串（Unicode 不转义）
+$json = json_encode($user);    // 同样输出 JSON
+echo $user;                    // __toString → toJson()
 ```
 
 ### 事务
 
 ```php
-\zap\DB::transaction(function() {
-    UserModel::create(['name' => '用户A']);
-    LogModel::create(['action' => 'create_user']);
+// 闭包事务（自动提交/回滚）
+DB::transaction(function () {
+    UserModel::findById(1)->delete();
+    LogModel::findById(1)->delete();
 });
 
-// 指定连接
-\zap\DB::transaction(function() {
-    // ...
-}, 'mysql');
+// 手动事务
+DB::beginTransaction();
+try {
+    UserModel::findById(1)->delete();
+    LogModel::findById(1)->delete();
+    DB::commit();
+} catch (\Throwable $e) {
+    DB::rollBack();
+    throw $e;
+}
 ```
 
-> 事务异常会记录日志并重新抛出，调用方可捕获处理。
+### 查询日志
+
+```php
+DB::enableQueryLog();
+
+DB::table('users')->where('id', 1)->get();
+DB::table('posts')->limit(10)->get();
+
+$log = DB::getQueryLog();
+// [['sql' => '...', 'params' => [...], 'time' => 1234567890.1234], ...]
+
+DB::flushQueryLog();
+DB::disableQueryLog();
+```
 
 ### 多数据库连接
 
 ```php
 DB::connection('mysql')->table('users')->get();
 DB::connection('pgsql')->table('logs')->get();
+
+// 连接信息
+DB::connectionInfo();  // [driver, server, version, ...]
 ```
 
 ---
