@@ -509,9 +509,39 @@ function csrf_field(): string
     return '<input type="hidden" name="_token" value="' . esc(Session::getInstance()->token()) . '" />';
 }
 
+function esc(?string $str): string
+{
+    return htmlspecialchars($str ?? '', ENT_QUOTES, 'UTF-8');
+}
+
 function req(): ZapRequest
 {
     return ZapRequest::instance();
+}
+
+/**
+ * 触发 HTTP 错误响应
+ *
+ * @param int    $statusCode HTTP 状态码（默认 500）
+ * @param string $message    错误消息（默认使用状态码对应消息）
+ * @param array  $headers    额外响应头
+ * @throws \zap\exception\HttpException
+ */
+function abort(int $statusCode = 500, string $message = '', array $headers = []): never
+{
+    \zap\ErrorHandler::abort($statusCode, $message, $headers);
+}
+
+/**
+ * 手动报告异常（记录日志但不终止）
+ *
+ * 对于不希望由 ErrorHandler 处理的异常，可手动报告：
+ *
+ * @param \Throwable $e 异常对象
+ */
+function report(\Throwable $e): void
+{
+    \zap\ErrorHandler::instance()->report($e);
 }
 
 function response($content = null, int $statusCode = 200, ?array $headers = []): Response
