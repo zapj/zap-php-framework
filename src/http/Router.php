@@ -16,6 +16,12 @@ class Router
     /** @var array 当前路由参数（匹配后填充） */
     public array $params = [];
 
+    /** @var array|null 当前匹配的路由信息（兼容旧版） */
+    public $currentRoute = null;
+
+    /** @var string|null 当前请求路径 */
+    protected ?string $requestPath = null;
+
     /** @var callable|string|null notFound 处理器 */
     protected $_notfound;
 
@@ -254,6 +260,9 @@ class Router
      */
     public function dispatch(string $requestUrl, string $requestMethod = 'GET'): bool
     {
+        // 存储请求路径（去掉查询参数）
+        $this->requestPath = strtok($requestUrl, '?') ?: '/';
+
         $matched = false;
 
         // HEAD 请求复用 GET 路由
@@ -608,5 +617,49 @@ class Router
     public static function setCacheKey(string $key): void
     {
         static::$cacheKey = $key;
+    }
+
+    // ───────────────────── 兼容旧版 CMS 方法 ─────────────────────
+
+    /**
+     * 获取当前请求路径
+     */
+    public function getRequestPath(): string
+    {
+        return $this->requestPath ?? ($_SERVER['REQUEST_URI'] ?? '/');
+    }
+
+    /**
+     * 触发 404 响应
+     */
+    public function trigger404(): void
+    {
+        if ($this->_notfound) {
+            $handler = $this->_notfound;
+            if ($handler instanceof \Closure) {
+                ($handler)();
+            } elseif (is_string($handler) && strpos($handler, '@') !== false) {
+                [$class, $method] = explode('@', $handler, 2);
+                (new $class())->$method();
+            } elseif (is_callable($handler)) {
+                call_user_func_array($handler, []);
+            }
+        } else {
+            http_response_code(404);
+            echo '<h1>404 Not Found</h1>';
+        }
+        exit;
+    }
+
+    /**
+     * 将 URL 路径段转换为控制器类名
+     * 例如: 'node' → 'Node', 'catalog' → 'Catalog', 'page' => 'Page'
+     */
+    public static function convertToName(string $name): string
+    {
+        // 将 slug 转换为 PascalCase 类名，例如 'user-profile' → 'UserProfile'
+        $name = str_replace(['-', '_'], ' ', $name);
+        $name = ucwords($name);
+        return str_replace(' ', '', $name);
     }
 }

@@ -242,7 +242,7 @@ class ErrorHandler
         }
 
         // 非致命错误：记录日志但不终止
-        Log::warning("{$errorType}: {$errstr}", [
+        $this->logWarning("{$errorType}: {$errstr}", [
             'file' => $error_file,
             'line' => $error_line,
         ]);
@@ -300,7 +300,7 @@ class ErrorHandler
             $context['request'] = $this->requestContext();
         }
 
-        Log::emergency('Exception: ' . get_class($e), $context);
+        $this->logError('Exception: ' . get_class($e), $context);
     }
 
     /**
@@ -806,6 +806,16 @@ class ErrorHandler
     {
         if (class_exists('zap\log\Log')) {
             \zap\log\Log::emergency($message, $context);
+        }
+    }
+
+    /**
+     * 记录警告日志
+     */
+    protected function logWarning(string $message, array $context = []): void
+    {
+        if (class_exists('zap\log\Log')) {
+            \zap\log\Log::warning($message, $context);
         }
     }
 
