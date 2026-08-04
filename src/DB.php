@@ -1,5 +1,7 @@
 <?php
 
+namespace zap;
+
 use zap\db\ZPDO;
 
 class DB

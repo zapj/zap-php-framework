@@ -613,7 +613,8 @@ class ErrorHandler
             border-top: none;
             border-radius: 0 0 6px 6px;
             overflow-x: auto;
-        "><pre style="margin:0;padding:0;"><code style="display:block;">';
+            font-family: Consolas, "SF Mono", Monaco, "Courier New", monospace;
+        ">';
 
         $padLen = strlen((string)($startLine + $lineCount));
         foreach ($sliced as $i => $line) {
@@ -626,20 +627,23 @@ class ErrorHandler
 
             $lineNum = str_pad((string)$currentLine, $padLen, ' ', STR_PAD_LEFT);
 
+            // 清理 highlight_file / highlight_string 残留的多余 <br> 标签与空行
             $display = ($line === '' || $line === "\n") ? '&nbsp;' : rtrim($line);
+            $display = preg_replace('/<br\s*\/?>/i', '', $display);
 
             $html .= '<div style="display:flex;background:' . $bg . ';">';
             $html .= '<span style="
-                display:inline-block;width:50px;padding:0 8px;text-align:right;
+                display:inline-block;width:50px;padding:2px 8px;text-align:right;
                 background:' . $numBg . ';color:' . $numColor . ';
-                font-size:12px;line-height:20px;user-select:none;flex-shrink:0;
+                font-size:12px;line-height:1.5;user-select:none;flex-shrink:0;
             ">' . $lineNum . '</span>';
             $html .= '<span style="
-                display:inline-block;padding:0 10px;font-size:13px;line-height:20px;
+                display:inline-block;padding:2px 10px;font-size:13px;line-height:1.5;
+                white-space:pre;
             ">' . $display . '</span></div>';
         }
 
-        $html .= '</code></pre></div>';
+        $html .= '</div>';
         return $html;
     }
 

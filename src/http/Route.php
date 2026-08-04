@@ -190,7 +190,7 @@ class Route
         if (is_object($this->fn) && ($this->fn instanceof \Closure)) {
             // 闭包回调
             $this->runMiddlewaresAndHandler(function () use ($params) {
-                return ($this->fn)(...$params);
+                return call_user_func_array($this->fn, $params);
             });
             return;
         }
@@ -201,13 +201,13 @@ class Route
 
             $reflectedMethod = new \ReflectionMethod($controller, $method);
             if ($reflectedMethod->isPublic() && !$reflectedMethod->isAbstract()) {
-                $this->runMiddlewaresAndHandler(function () use ($controller, $method, $params) {
+                $this->runMiddlewaresAndHandler(function () use ($controller, $method, $params, $reflectedMethod) {
                     if ($reflectedMethod->isStatic()) {
-                        return $controller::$method(...$params);
+                        return call_user_func_array([$controller, $method], $params);
                     }
                     $instance = new $controller();
                     $instance->setParams($params);
-                    return $instance->$method(...$params);
+                    return call_user_func_array([$instance, $method], $params);
                 });
             }
 
