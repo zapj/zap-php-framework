@@ -544,15 +544,44 @@ class ErrorHandler
         $sliced = [];
         for ($i = $startLine; $i <= $endLine; $i++) {
             $line = $source[$i - 1] ?? '';
-            $display = highlight_string('<?php ' . $line . '?>', true);
-            // 去掉 <?php 和 ?&gt; 标记
-            $display = preg_replace('/&lt;\?php\s?/', '', $display, 1);
-            $display = preg_replace('/\?&gt;(\s*)$/', '$1', $display, 1);
-            $sliced[] = $display;
+            $sliced[] = $this->highlightLine($line);
         }
 
         $lineCount = count($sliced);
         return $this->buildHighlightHtml($filename, $message, $title, $startLine, $lineNo, $lineCount, $sliced);
+    }
+
+    /**
+     * 简单的 PHP 语法高亮（不依赖 highlight_string 的 <?php ?> 包装）。
+     */
+    protected function highlightLine(string $line): string
+    {
+        $line = htmlspecialchars($line, ENT_QUOTES, 'UTF-8');
+
+        $keywords = implode('|', [
+            'abstract', 'and', 'array', 'as', 'break', 'case', 'catch', 'class', 'clone',
+            'const', 'continue', 'declare', 'default', 'die', 'do', 'echo', 'else', 'elseif',
+            'empty', 'enddeclare', 'endfor', 'endforeach', 'endif', 'endswitch', 'endwhile',
+            'eval', 'exit', 'extends', 'final', 'finally', 'for', 'foreach', 'function',
+            'global', 'goto', 'if', 'implements', 'include', 'include_once', 'instanceof',
+            'insteadof', 'interface', 'isset', 'list', 'namespace', 'new', 'or', 'print',
+            'private', 'protected', 'public', 'require', 'require_once', 'return', 'static',
+            'switch', 'throw', 'trait', 'try', 'unset', 'use', 'var', 'while', 'xor', 'yield',
+            'true', 'false', 'null', 'self', 'parent', 'static', 'this',
+            'int', 'float', 'bool', 'string', 'void', 'null', 'iterable', 'object', 'callable',
+            'mixed', 'never',
+        ]);
+
+        $line = preg_replace('/\b(' . $keywords . ')\b/', '<span style="color:#00b">$1</span>', $line);
+        $line = preg_replace('/(\$[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*)/', '<span style="color:#060">$1</span>', $line);
+        $line = preg_replace_callback('/("(?:[^"\\\\]|\\\\.)*"|\'(?:[^\'\\\\]|\\\\.)*\')/', static function ($m) {
+            return '<span style="color:#c00">' . $m[0] . '</span>';
+        }, $line);
+        $line = preg_replace('/(\/\/.*$|#.*$)/m', '<span style="color:#999;font-style:italic">$1</span>', $line);
+        $line = preg_replace('/(\/\*.*?\*\/)/', '<span style="color:#999;font-style:italic">$1</span>', $line);
+        $line = preg_replace('/(\b\d+(?:\.\d+)?\b)/', '<span style="color:#f60">$1</span>', $line);
+
+        return $line;
     }
 
     /**
