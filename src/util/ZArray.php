@@ -8,6 +8,7 @@ use Exception;
 use IteratorAggregate;
 use Traversable;
 use ArrayIterator;
+use Serializable;
 
 class ZArray implements IteratorAggregate, ArrayAccess, Serializable, Countable
 {
