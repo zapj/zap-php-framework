@@ -5,22 +5,24 @@ use zap\db\ZPDO;
 class DB
 {
     /** @var ZPDO[] Cached connections */
-    protected static $connections = [];
+    protected static array $connections = [];
 
-    /** @var ZPDO Cached connection used within transactions */
-    protected static $transactionConnection = null;
+    /** @var ZPDO|null Cached connection used within transactions */
+    protected static ?ZPDO $transactionConnection = null;
+
+    // ==================================================================
+    //  连接管理
+    // ==================================================================
 
     /**
-     * Get a database connection.
+     * 获取数据库连接（按名称缓存）
      *
-     * @param string|null $name Connection name (null = default)
-     * @return ZPDO
+     * @param string|null $name 连接名，null 使用默认
      */
-    public static function connection($name = null): ZPDO
+    public static function connection(?string $name = null): ZPDO
     {
-        $name = $name ?? 'default';
+        $name ??= 'default';
 
-        // During a transaction, return the locked connection
         if (self::$transactionConnection !== null) {
             return self::$transactionConnection;
         }
@@ -37,17 +39,16 @@ class DB
         return self::$connections[$name];
     }
 
-    /**
-     * Get the default connection (magic alias).
-     */
-    public static function getConnection($name = null): ZPDO
+    /** @deprecated 使用 connection() */
+    public static function getConnection(?string $name = null): ZPDO
     {
         return self::connection($name);
     }
 
-    /**
-     * Begin a transaction.
-     */
+    // ==================================================================
+    //  事务
+    // ==================================================================
+
     public static function beginTransaction(): void
     {
         $conn = self::connection();
@@ -55,9 +56,6 @@ class DB
         self::$transactionConnection = $conn;
     }
 
-    /**
-     * Commit the current transaction.
-     */
     public static function commit(): void
     {
         if (self::$transactionConnection !== null) {
@@ -66,9 +64,6 @@ class DB
         }
     }
 
-    /**
-     * Rollback the current transaction.
-     */
     public static function rollBack(): void
     {
         if (self::$transactionConnection !== null) {
@@ -77,10 +72,7 @@ class DB
         }
     }
 
-    /**
-     * Execute a callback within a transaction.
-     */
-    public static function transaction(callable $callback, ...$args)
+    public static function transaction(callable $callback, ...$args): mixed
     {
         try {
             self::beginTransaction();
@@ -93,66 +85,134 @@ class DB
         }
     }
 
-    /**
-     * Get a query builder instance for a table.
-     */
-    public static function table(string $table, string $alias = null): \zap\db\Query
+    // ==================================================================
+    //  Query Builder
+    // ==================================================================
+
+    /** 获取 Query Builder 实例 */
+    public static function table(string $table, ?string $alias = null): \zap\db\Query
     {
         return self::connection()->table($table, $alias);
     }
 
+    // ==================================================================
+    //  CRUD 便捷方法  (表名 + 数据 模式)
+    // ==================================================================
+
     /**
-     * Enable query logging (on the last created connection via this facade).
+     * 插入一行数据
+     *
+     * @param string $table  表名
+     * @param array  $data   字段 => 值 的关联数组
+     * @return false|string  成功返回新 ID，失败返回 false
      */
-    public static function enableQueryLog(): void
+    public static function insert(string $table, array $data): false|string
     {
-        self::connection()->enableQueryLog();
+        return self::connection()->insert($table, $data);
     }
 
     /**
-     * Disable query logging.
+     * 批量插入
+     *
+     * @param string $table  表名
+     * @param array  $rows   二维关联数组
+     * @return int  受影响行数
      */
-    public static function disableQueryLog(): void
+    public static function batchInsert(string $table, array $rows): int
     {
-        self::connection()->disableQueryLog();
+        return self::connection()->batchInsert($table, $rows);
     }
 
     /**
-     * Get the query log.
+     * 插入或更新（存在则更新）
+     *
+     * @param string $table   表名
+     * @param array  $data    插入数据
+     * @param array  $duplicate  冲突时更新的字段
+     * @param mixed  $primaryKeys 主键（仅 pgsql 需要）
      */
-    public static function getQueryLog(): array
+    public static function upsert(string $table, array $data, ?array $duplicate = null, $primaryKeys = null): mixed
     {
-        return self::connection()->getQueryLog();
+        return self::connection()->upsert($table, $data, $duplicate, $primaryKeys);
     }
 
     /**
-     * Flush the query log.
+     * REPLACE INTO 操作
      */
-    public static function flushQueryLog(): void
+    public static function replace(string $table, array $data): int
     {
-        self::connection()->flushQueryLog();
+        return self::connection()->replace($table, $data);
     }
 
     /**
-     * Run a raw SQL statement.
+     * 更新数据
+     *
+     * @param string       $table       表名
+     * @param array        $data        要更新的字段数据
+     * @param array|string $conditions  条件：关联数组（col=>val）或 SQL 字符串
+     * @param array        $params      SQL 条件字符串的绑定参数
+     * @return int  受影响行数
      */
-    public static function statement(string $query, array $params = []): \PDOStatement|false
+    public static function update(string $table, array $data, array|string $conditions = '', array $params = []): int
     {
-        return self::connection()->statement($query, $params);
+        return self::connection()->update($table, $data, $conditions, $params);
     }
 
     /**
-     * Run a SELECT query and return all results.
+     * 删除数据
+     *
+     * @param string       $table       表名
+     * @param array|string $conditions  条件：关联数组 或 SQL 字符串
+     * @param array        $params      条件字符串的绑定参数
+     * @return int  受影响行数
      */
-    public static function select(string $query, array $params = []): array
+    public static function delete(string $table, array|string $conditions = '', array $params = []): int
     {
-        return self::connection()->select($query, $params);
+        return self::connection()->delete($table, $conditions, $params);
     }
 
     /**
-     * Run an INSERT query and return the last insert ID.
+     * 统计行数
      */
-    public static function insert(string $query, array $params = []): false|string
+    public static function count(string $table, array|string $conditions = '', array $params = []): int|string
+    {
+        return self::connection()->count($table, $conditions, $params);
+    }
+
+    /**
+     * 键值对查询
+     */
+    public static function keyPair(string $table, array|string $columns, array|string $conditions = '', array $params = []): array
+    {
+        return self::connection()->keyPair($table, $columns, $conditions, $params);
+    }
+
+    // ==================================================================
+    //  原始 SQL 执行
+    // ==================================================================
+
+    /**
+     * 执行原始 DML 语句（UPDATE / DELETE / DDL），返回受影响行数
+     *
+     * @param string $query  SQL 语句（支持 {table} 前缀占位）
+     * @param array  $params 绑定参数
+     * @return int  受影响行数
+     */
+    public static function exec(string $query, array $params = []): int
+    {
+        $stm = self::connection()->prepare($query);
+        $stm->execute($params);
+        return $stm->rowCount();
+    }
+
+    /**
+     * 执行原始 INSERT 语句，返回新自增 ID
+     *
+     * @param string $query  SQL 语句
+     * @param array  $params 绑定参数
+     * @return false|string  成功返回新 ID
+     */
+    public static function execInsert(string $query, array $params = []): false|string
     {
         $conn = self::connection();
         if (stripos(trim($query), 'INSERT') === 0) {
@@ -165,9 +225,17 @@ class DB
     }
 
     /**
-     * Run an UPDATE query and return affected rows.
+     * 执行原始 SQL 并返回 Statement（SELECT / 任意）
      */
-    public static function update(string $query, array $params = []): int
+    public static function statement(string $query, array $params = []): \PDOStatement|false
+    {
+        return self::connection()->statement($query, $params);
+    }
+
+    /**
+     * 执行原始 SQL 语句（SELECT / 任意），返回受影响行数
+     */
+    public static function query(string $query, array $params = []): int
     {
         $stm = self::connection()->prepare($query);
         $stm->execute($params);
@@ -175,18 +243,41 @@ class DB
     }
 
     /**
-     * Run a DELETE query and return affected rows.
+     * 执行 SELECT 并返回所有结果
      */
-    public static function delete(string $query, array $params = []): int
+    public static function select(string $query, array $params = []): array
     {
-        $stm = self::connection()->prepare($query);
-        $stm->execute($params);
-        return $stm->rowCount();
+        return self::connection()->select($query, $params);
     }
 
-    /**
-     * Get the PDO server info.
-     */
+    // ==================================================================
+    //  查询日志
+    // ==================================================================
+
+    public static function enableQueryLog(): void
+    {
+        self::connection()->enableQueryLog();
+    }
+
+    public static function disableQueryLog(): void
+    {
+        self::connection()->disableQueryLog();
+    }
+
+    public static function getQueryLog(): array
+    {
+        return self::connection()->getQueryLog();
+    }
+
+    public static function flushQueryLog(): void
+    {
+        self::connection()->flushQueryLog();
+    }
+
+    // ==================================================================
+    //  信息
+    // ==================================================================
+
     public static function connectionInfo(): array
     {
         return self::connection()->info();

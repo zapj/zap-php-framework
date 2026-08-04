@@ -1305,6 +1305,34 @@ DB::table('stock')->where('id', 1)->decrement('quantity', 1);
 DB::table('users')->where('id', 1)->delete();
 ```
 
+#### DB Facade CRUD（表名+数据，自动参数化绑定）
+
+```php
+// INSERT
+$id = DB::insert('users', ['name' => '张三', 'email' => 'zs@example.com']);
+
+// UPDATE
+$rows = DB::update('users', ['name' => '张三（改名）'], ['id' => 1]);
+
+// DELETE
+$rows = DB::delete('users', ['id' => 1]);
+$rows = DB::delete('users', 'status=0 AND created_at<?', ['2023-01-01']);
+
+// 批量插入
+DB::batchInsert('users', [
+    ['name' => 'A', 'email' => 'a@a.com'],
+    ['name' => 'B', 'email' => 'b@b.com'],
+]);
+
+// Upsert / Replace
+DB::upsert('users', ['id' => 1, 'name' => '新名字']);
+DB::replace('users', ['id' => 1, 'name' => '替换']);
+
+// 计数 & 键值对
+$cnt = DB::count('users', 'status=?', [1]);
+$map = DB::keyPair('settings', 'key, value');
+```
+
 #### WHERE 条件
 
 ```php
@@ -1439,6 +1467,23 @@ DB::table('users')->where('id', 1)->dd();         // 输出 SQL 并终止
 
 // 获取绑定参数
 $bindings = DB::table('users')->where('id', 1)->getBindings();
+```
+
+### DB Facade 原始 SQL 执行
+
+```php
+// SELECT
+$users = DB::select('SELECT * FROM users WHERE status=?', [1]);
+
+// 执行 UPDATE / DELETE / DDL，返回受影响行数
+DB::exec('UPDATE users SET login_count=login_count+1 WHERE id=?', [1]);
+DB::exec('DELETE FROM sessions WHERE expired_at < NOW()');
+
+// 执行 INSERT 并返回新 ID
+$id = DB::execInsert('INSERT INTO logs (msg) VALUES (?)', ['start']);
+
+// PDO Statement
+$stm = DB::statement('SELECT * FROM users WHERE id=?', [1]);
 ```
 
 ### 直接 ZPDO 操作
@@ -2270,15 +2315,53 @@ str_limit('very long text', 10);       // very lon...
 
 ## HTML 构建器
 
+流式链式调用，自动转义属性值防止 XSS。
+
 ```php
 use zap\html\Html;
 
-echo Html::a('/users', '用户列表');          // <a href="/users">用户列表</a>
-echo Html::ul(['首页', '关于', '联系']);     // <ul><li>...</li></ul>
-echo Html::form('/login', 'POST')
-    ->text('username')
-    ->password('password')
-    ->submit('登录');
+// 基础元素
+echo Html::el('div')->class('card')->id('app')->text('Hello');
+
+// 属性方法
+echo Html::el('input')
+    ->attr('type', 'email')
+    ->attr('placeholder', '请输入邮箱')
+    ->class('form-control');
+
+// CSS class 自动去重
+echo Html::el('div')->class('btn')->class('btn')->class('primary');
+// → <div class="btn primary"></div>
+
+// 布尔属性
+echo Html::el('input')->attr('disabled', true);   // → disabled
+echo Html::el('input')->attr('disabled', false);  // → 不渲染
+
+// data-* 属性
+echo Html::el('div')->data('controller', 'modal')->data('action', 'close');
+
+// 内容 (text 自动转义，html 原样输出)
+echo Html::el('span')->text('<script>alert(1)</script>');
+// → &lt;script&gt;... 安全输出
+
+// 子节点嵌套
+echo Html::el('ul')->append(
+    Html::el('li')->text('项目1')->class('active'),
+    Html::el('li')->text('项目2'),
+);
+
+// 便捷工厂
+echo Html::a('/users', '用户列表')->class('nav-link');          // <a>
+echo Html::img('/logo.png')->class('logo')->attr('alt', 'Logo'); // <img>
+echo Html::input('text', 'username')->class('form-control');     // <input>
+echo Html::form('/login', 'POST')->append(                       // <form>
+    Html::input('email')->class('form-control'),
+    Html::button('登录')->class('btn'),
+);
+echo Html::select([1 => '启用', 0 => '禁用'], 1);               // <select>
+echo Html::ul(['首页', '关于', '联系']);                        // <ul><li>…</li></ul>
+echo Html::table([['张三', 28]], ['姓名', '年龄']);             // <table>
+echo Html::h(2, '二级标题');                                     // <h2>
 ```
 
 ---
