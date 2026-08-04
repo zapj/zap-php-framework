@@ -189,6 +189,33 @@ class Query
 
     public function orWhere($column, $operator = null, $value = null): self
     {
+        // Allow passing a where array directly
+        if (is_array($column)) {
+            foreach ($column as $key => $val) {
+                if (is_numeric($key)) {
+                    $this->_where([$val['column'] => [
+                        'operator' => $val['operator'] ?? '=',
+                        'value'    => $val['value'] ?? null,
+                        'boolean'  => 'OR',
+                    ]]);
+                } else {
+                    $this->_where([$key => [
+                        'operator' => '=',
+                        'value'    => $val,
+                        'boolean'  => 'OR',
+                    ]]);
+                }
+            }
+            return $this;
+        }
+
+        if ($column instanceof \Closure) {
+            $query = new self($this->db, $this->from, $this->alias);
+            $column($query);
+            $this->wheres[] = ['type' => 'nested', 'query' => $query, 'boolean' => 'OR'];
+            return $this;
+        }
+
         if (func_num_args() === 2) {
             [$value, $operator] = [$operator, '='];
         }
