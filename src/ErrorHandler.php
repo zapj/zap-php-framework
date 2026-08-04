@@ -495,35 +495,8 @@ class ErrorHandler
                 . '无法读取文件: ' . htmlspecialchars($filename) . '</div>';
         }
 
-        $totalLines = count(file($filename));
-        $startLine = max(1, $lineNo - $offset);
-        $endLine   = min($totalLines, $lineNo + $offset);
-
-        // 使用 PHP 内置高亮 + 按行提取
-        $highlighted = highlight_file($filename, true);
-        // 按 <br /> 拆分行
-        $lines = explode('<br />', $highlighted);
-        // 去除 PHP 内置高亮的 <code> / <span> 等外层标签，只保留 <ol> 内容
-        $lines = preg_grep('/^\s*$/', $lines, PREG_GREP_INVERT);
-
-        // 如果行数匹配不上（因 highlight_file 的 HTML 结构复杂），降级为手动高亮
-        if (count($lines) < $totalLines) {
-            return $this->manualHighlightFile($filename, $lineNo, $message, $title, $offset);
-        }
-
-        // 提取目标行范围（$lines 索引从 0 开始对应第 1 行）
-        $sliced = array_slice($lines, $startLine - 1, $offset * 2 + 1);
-        $lineCount = count($sliced);
-
-        return $this->buildHighlightHtml(
-            $filename,
-            $message,
-            $title,
-            $startLine,
-            $lineNo,
-            $lineCount,
-            $sliced
-        );
+        // 使用手动高亮，避免 highlight_file 按 <br /> 拆分导致 HTML 标签破碎
+        return $this->manualHighlightFile($filename, $lineNo, $message, $title, $offset);
     }
 
     /**
