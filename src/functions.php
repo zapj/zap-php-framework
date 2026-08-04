@@ -173,12 +173,7 @@ if (!function_exists('config')) {
      */
     function config(string $name, $default = null)
     {
-        if (func_num_args() > 1) {
-            Config::set($name, $default);
-            return $default;
-        }
-
-        return Config::get($name);
+        return Config::get($name, $default);
     }
 }
 
