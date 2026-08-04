@@ -605,13 +605,18 @@ class Query
 
     /**
      * Set fields for UPDATE query.
+     * Supports: set($key, $value) or set(['key' => 'value', ...])
      */
-    public function set($params): self
+    public function set($params, $value = null): self
     {
         $this->type = 'update';
 
+        if ($value !== null) {
+            $params = [$params => $value];
+        }
+
         if ($this->db) {
-            foreach ($params as $name => $param) {
+            foreach ((array)$params as $name => $param) {
                 if ($param instanceof Expr) {
                     $this->fields[] = $this->db->quoteColumn($name) . '=' . $param->raw;
                 } else {
@@ -803,6 +808,34 @@ class Query
         $extra[$column] = new Expr($column . ' - ' . $amount);
         $this->type = 'update';
         return $this->updateQuery($extra);
+    }
+
+    /**
+     * Execute an UPDATE query. Supports two patterns:
+     *  - Chained:   ->set('col', val)->set('col2', val2)->where(...)->update()
+     *  - Direct:    ->where(...)->update(['col' => val])
+     */
+    public function update(array $data = null): int
+    {
+        $this->type = 'update';
+
+        if ($data !== null) {
+            return $this->updateQuery($data);
+        }
+
+        if (empty($this->fields)) {
+            return 0;
+        }
+
+        $sql = 'UPDATE ' . ($this->db ? $this->db->quoteTable($this->from) : $this->from);
+        $sql .= ' SET ' . implode(', ', $this->fields);
+        $sql .= $this->prepareWhereString();
+        $sql .= $this->prepareLimitString();
+        $sql .= $this->prepareOrderString();
+
+        $stm = $this->db->prepare($sql);
+        $stm->execute($this->params);
+        return $stm->rowCount();
     }
 
     /**
