@@ -425,10 +425,10 @@ class ZPDO extends PDO
 
     // ─── Query Builder Factory ─────────────────────────────────
 
-    public function table(string $table, string $alias = null): Query
+    public function table(string $table, ?string $alias = null): Query
     {
         $query = new Query($this);
-        return $query->from($table, $alias);
+        return $query->from($table, $alias ?? '');
     }
 
     // ─── Schema / DDL ──────────────────────────────────────────

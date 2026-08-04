@@ -79,7 +79,7 @@ abstract class Model implements ArrayAccess, JsonSerializable
     /**
      * Get a model instance.
      */
-    public static function getInstance(): static
+    public static function getInstance()
     {
         return new static();
     }
@@ -98,8 +98,8 @@ abstract class Model implements ArrayAccess, JsonSerializable
      */
     public static function getDB(): ?ZPDO
     {
-        if (class_exists('DB') && method_exists('DB', 'connection')) {
-            return \DB::connection();
+        if (class_exists('zap\DB') && method_exists('zap\DB', 'connection')) {
+            return \zap\DB::connection();
         }
         return app()->db ?? null;
     }
@@ -117,7 +117,7 @@ abstract class Model implements ArrayAccess, JsonSerializable
     /**
      * Find a model by its primary key.
      */
-    public static function findById($id, $idName = null): ?static
+    public static function findById($id, $idName = null)
     {
         $primaryKey = $idName ?? (new static())->primaryKey;
         $query = static::createQuery()
@@ -135,7 +135,7 @@ abstract class Model implements ArrayAccess, JsonSerializable
     /**
      * Find a model by its primary key or throw an exception.
      */
-    public static function findOrFail($id, $idName = null): static
+    public static function findOrFail($id, $idName = null)
     {
         $model = static::findById($id, $idName);
         if ($model === null) {
@@ -147,7 +147,7 @@ abstract class Model implements ArrayAccess, JsonSerializable
     /**
      * Find a model by ID or return a new instance.
      */
-    public static function findOrNew($id, $idName = null): static
+    public static function findOrNew($id, $idName = null)
     {
         $model = static::findById($id, $idName);
         if ($model !== null) {
@@ -185,7 +185,7 @@ abstract class Model implements ArrayAccess, JsonSerializable
     /**
      * Get the first record.
      */
-    public static function first(): ?static
+    public static function first()
     {
         $query = static::createQuery()->limit(1);
         $row   = $query->get();
@@ -339,7 +339,7 @@ abstract class Model implements ArrayAccess, JsonSerializable
     /**
      * Fill the model attributes, respecting fillable/guarded rules.
      */
-    public function fill(array $attributes): static
+    public function fill(array $attributes)
     {
         $filtered = $this->filterFillable($attributes);
         foreach ($filtered as $key => $value) {
@@ -479,7 +479,7 @@ abstract class Model implements ArrayAccess, JsonSerializable
     /**
      * Save the model and return it.
      */
-    public function saveAndReturn(): static
+    public function saveAndReturn()
     {
         $this->save();
         return $this;
@@ -488,7 +488,7 @@ abstract class Model implements ArrayAccess, JsonSerializable
     /**
      * Reload a fresh model instance from the database.
      */
-    public function fresh(): ?static
+    public function fresh()
     {
         $id = $this->getId();
         if (!$id) {
@@ -500,7 +500,7 @@ abstract class Model implements ArrayAccess, JsonSerializable
     /**
      * Reload the current model attributes from the database.
      */
-    public function refresh(): static
+    public function refresh()
     {
         $fresh = $this->fresh();
         if ($fresh) {

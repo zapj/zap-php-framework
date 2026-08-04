@@ -147,6 +147,14 @@ class ZapRequest
         return $_GET[$key] ?? $default;
     }
 
+    /**
+     * Alias for query() - get GET parameter
+     */
+    public function get($key = null, $default = null)
+    {
+        return $this->query($key, $default);
+    }
+
     // ───────────────────── IP & Agent ─────────────────────
 
     public function ip(): string

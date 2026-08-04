@@ -107,8 +107,9 @@ class Statement extends PDOStatement
     /**
      * Get column meta information.
      */
-    public function getColumnMeta(int $column)
+    #[\ReturnTypeWillChange]
+    public function getColumnMeta($column)
     {
-        return $this->getColumnMeta($column);
+        return parent::getColumnMeta($column);
     }
 }

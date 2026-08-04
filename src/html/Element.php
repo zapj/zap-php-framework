@@ -41,14 +41,14 @@ class Element implements \Stringable
      * 设置单个属性
      * @param mixed $value  true 渲染为布尔属性，null/false 则移除该属性
      */
-    public function attr(string $name, $value = true): static
+    public function attr(string $name, $value = true)
     {
         $this->attributes[$name] = $value;
         return $this;
     }
 
     /** 批量设置属性 */
-    public function attrs(array $attrs): static
+    public function attrs(array $attrs)
     {
         foreach ($attrs as $k => $v) {
             $this->attributes[$k] = $v;
@@ -57,7 +57,7 @@ class Element implements \Stringable
     }
 
     /** 追加 CSS class（自动去重） */
-    public function class(string $class): static
+    public function class(string $class)
     {
         $existing = $this->attributes['class'] ?? '';
         $classes = $existing ? array_merge(explode(' ', $existing), explode(' ', $class)) : explode(' ', $class);
@@ -66,21 +66,21 @@ class Element implements \Stringable
     }
 
     /** 设置 id */
-    public function id(string $id): static
+    public function id(string $id)
     {
         $this->attributes['id'] = $id;
         return $this;
     }
 
     /** 设置内联 style */
-    public function style(string $style): static
+    public function style(string $style)
     {
         $this->attributes['style'] = ($this->attributes['style'] ?? '') . $style;
         return $this;
     }
 
     /** 设置 data-* 属性 */
-    public function data(string $name, $value): static
+    public function data(string $name, $value)
     {
         $this->attributes['data-' . $name] = $value;
         return $this;
@@ -91,7 +91,7 @@ class Element implements \Stringable
     /**
      * 设置纯文本内容（自动 HTML 转义）
      */
-    public function text(string $text): static
+    public function text(string $text)
     {
         $this->html = htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         return $this;
@@ -101,7 +101,7 @@ class Element implements \Stringable
      * 设置原始 HTML 内容
      * @param string|Stringable $html
      */
-    public function html($html): static
+    public function html($html)
     {
         $this->html = (string) $html;
         return $this;
@@ -110,7 +110,7 @@ class Element implements \Stringable
     // ========== Children Methods ==========
 
     /** 追加子节点 */
-    public function append(...$children): static
+    public function append(...$children)
     {
         foreach ($children as $child) {
             $this->children[] = is_string($child) ? $child : $child;
@@ -119,7 +119,7 @@ class Element implements \Stringable
     }
 
     /** 前置子节点 */
-    public function prepend(...$children): static
+    public function prepend(...$children)
     {
         $items = [];
         foreach ($children as $child) {

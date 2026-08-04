@@ -58,7 +58,7 @@ abstract class Command
     {
     }
 
-    public function setName(string $name): static
+    public function setName(string $name)
     {
         $this->name = $name;
         return $this;
@@ -69,7 +69,7 @@ abstract class Command
         return $this->name;
     }
 
-    public function setDescription(string $description): static
+    public function setDescription(string $description)
     {
         $this->description = $description;
         return $this;
@@ -88,7 +88,7 @@ abstract class Command
      * @param bool   $required    是否必填
      * @param mixed  $default     默认值
      */
-    public function addArgument(string $name, string $description = '', bool $required = false, $default = null): static
+    public function addArgument(string $name, string $description = '', bool $required = false, $default = null)
     {
         $this->arguments[$name] = compact('description', 'required', 'default');
         return $this;
@@ -110,7 +110,7 @@ abstract class Command
      * @param string $description 描述
      * @param mixed  $default     默认值
      */
-    public function addOption(string $name, string $shortcut = '', string $description = '', $default = null): static
+    public function addOption(string $name, string $shortcut = '', string $description = '', $default = null)
     {
         $this->options[$name] = compact('shortcut', 'description', 'default');
         return $this;

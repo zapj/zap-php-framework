@@ -30,10 +30,10 @@ class DB
         }
 
         if (!isset(self::$connections[$name])) {
-            $dbConfig = app()->config['database']['connections'][$name]
-                ?? app()->config['database']['connections']['default']
-                ?? app()->config['database'][$name]
-                ?? app()->config['database']['default']
+            $dbConfig = config('database.connections.' . $name)
+                ?? config('database.connections.default')
+                ?? config('database.' . $name)
+                ?? config('database.default')
                 ?? [];
             self::$connections[$name] = new ZPDO($dbConfig);
         }

@@ -7,6 +7,12 @@ use zap\util\Pagination;
 
 class Query
 {
+    // Fetch mode constants
+    const FETCH_ASSOC  = 2;
+    const FETCH_OBJ    = 5;
+    const FETCH_COLUMN = 7;
+    const FETCH_KEY_PAIR = 12;
+
     /**
      * Distinct select.
      */
@@ -92,7 +98,7 @@ class Query
     /** @var array Cached where bind values for logging */
     protected $bindings = [];
 
-    private function __construct($db = null, string $from = '', string $alias = '')
+    public function __construct($db = null, string $from = '', string $alias = '')
     {
         if ($db instanceof ZPDO) {
             $this->db = $db;
@@ -397,8 +403,30 @@ class Query
 
     public function orderBy(string $column, string $direction = 'ASC'): self
     {
-        $direction = strtoupper($direction);
-        $direction = in_array($direction, ['ASC', 'DESC']) ? $direction : 'ASC';
+        // Support comma-separated multiple order clauses like "col1 ASC,col2 DESC"
+        if (strpos($column, ',') !== false) {
+            foreach (explode(',', $column) as $clause) {
+                $clause = trim($clause);
+                if ($clause !== '') {
+                    // Split "col1 ASC" into column and direction
+                    $parts = preg_split('/\s+/', $clause, 2);
+                    $col = $parts[0];
+                    $dir = $parts[1] ?? $direction;
+                    $this->orderBy($col, $dir);
+                }
+            }
+            return $this;
+        }
+
+        // Detect if column already includes ASC/DESC suffix
+        $columnTrim = trim($column);
+        if (preg_match('/\s+(ASC|DESC)$/i', $columnTrim, $matches)) {
+            $column = trim(substr($columnTrim, 0, -(strlen($matches[0]))));
+            $direction = strtoupper($matches[1]);
+        } else {
+            $direction = strtoupper($direction);
+            $direction = in_array($direction, ['ASC', 'DESC']) ? $direction : 'ASC';
+        }
 
         if ($this->db) {
             $column = $this->db->quoteColumn($column);
@@ -440,8 +468,16 @@ class Query
 
     // ─── Join ──────────────────────────────────────────────────
 
-    public function join(string $table, string $alias, $on = '', string $type = 'INNER'): self
+    public function join($table, $alias = '', $on = '', string $type = 'INNER'): self
     {
+        // Support old API: join(['table', 'alias'], $on)
+        // In old API, second argument is the ON condition (not an alias)
+        if (is_array($table)) {
+            $on    = $alias !== '' ? (string)$alias : $on;
+            $alias = $table[1] ?? '';
+            $table = $table[0];
+        }
+
         if ($this->db) {
             $table = $this->db->quoteTable($table);
         }
@@ -458,12 +494,12 @@ class Query
         return $this;
     }
 
-    public function leftJoin(string $table, string $alias, $on = ''): self
+    public function leftJoin($table, $alias = '', $on = ''): self
     {
         return $this->join($table, $alias, $on, 'LEFT');
     }
 
-    public function rightJoin(string $table, string $alias, $on = ''): self
+    public function rightJoin($table, $alias = '', $on = ''): self
     {
         return $this->join($table, $alias, $on, 'RIGHT');
     }
@@ -641,12 +677,30 @@ class Query
 
     // ─── Execution ─────────────────────────────────────────────
 
-    public function get(): array
+    public function get(int $fetchMode = self::FETCH_ASSOC): array
     {
         $sql = $this->getSQL();
         $stm = $this->db->prepare($sql);
         $stm->execute($this->params);
-        return $stm->fetchAll();
+        return $stm->fetchAll($fetchMode);
+    }
+
+    /**
+     * Fetch all results with the given fetch mode.
+     */
+    public function fetchAll(int $fetchMode = self::FETCH_ASSOC): array
+    {
+        return $this->get($fetchMode);
+    }
+
+    /**
+     * Fetch a single record.
+     */
+    public function fetch(int $fetchMode = self::FETCH_ASSOC)
+    {
+        $this->limit(1);
+        $results = $this->get($fetchMode);
+        return $results[0] ?? null;
     }
 
     public function first()
@@ -1124,3 +1178,9 @@ class Query
         ];
     }
 }
+
+// Global fetch mode constants for backward compatibility
+defined('FETCH_ASSOC')   || define('FETCH_ASSOC',   Query::FETCH_ASSOC);
+defined('FETCH_OBJ')     || define('FETCH_OBJ',     Query::FETCH_OBJ);
+defined('FETCH_COLUMN')  || define('FETCH_COLUMN',  Query::FETCH_COLUMN);
+defined('FETCH_KEY_PAIR') || define('FETCH_KEY_PAIR', Query::FETCH_KEY_PAIR);

@@ -39,11 +39,47 @@ class Pagination
         return new self($total, $perPage, $currentPage);
     }
 
-    public function __construct(int $total = 0, int $perPage = 10, int $currentPage = 1)
+    /**
+     * Constructor supports two calling styles:
+     *   New: Pagination(total, perPage, currentPage)
+     *   Old: Pagination(currentPage, perPage, queryParams)  — for backward compatibility
+     */
+    public function __construct(int $a = 0, int $b = 10, $c = 1)
     {
-        $this->total       = max(0, $total);
-        $this->perPage     = max(1, $perPage);
-        $this->currentPage = max(1, $currentPage);
+        if (is_array($c)) {
+            // Old API: (int $currentPage, int $perPage, array $queryParams)
+            $currentPage = max(1, $a);
+            $perPage     = max(1, $b);
+            $queryParams = $c;
+            $total       = 0;
+            $this->fromQueryParams($queryParams);
+        } else {
+            // New API: (int $total, int $perPage, int $currentPage)
+            $total       = max(0, $a);
+            $perPage     = max(1, $b);
+            $currentPage = max(1, (int)$c);
+        }
+
+        $this->total       = $total;
+        $this->perPage     = $perPage;
+        $this->currentPage = $currentPage;
+    }
+
+    /**
+     * Extract pagination state from GET query parameters.
+     */
+    protected function fromQueryParams(array $params): void
+    {
+        $pathParts = [];
+        foreach ($params as $key => $value) {
+            if ($key === 'page') {
+                continue;
+            }
+            $pathParts[] = $key . '=' . urlencode((string)$value);
+        }
+        if ($pathParts) {
+            $this->path = '?' . implode('&', $pathParts);
+        }
     }
 
     // ─── Fluent Setters ────────────────────────────────────────
@@ -94,6 +130,22 @@ class Pagination
     public function perPage(): int
     {
         return $this->perPage;
+    }
+
+    /**
+     * Alias for perPage() — backward compatibility.
+     */
+    public function getLimit(): int
+    {
+        return $this->perPage;
+    }
+
+    /**
+     * Return the SQL offset = (currentPage - 1) * perPage.
+     */
+    public function getOffset(): int
+    {
+        return max(0, ($this->currentPage - 1) * $this->perPage);
     }
 
     public function total(): int
