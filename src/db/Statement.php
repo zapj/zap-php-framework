@@ -107,7 +107,7 @@ class Statement extends PDOStatement
     /**
      * Get column meta information.
      */
-    public function getColumnMeta(int $column): array|false
+    public function getColumnMeta(int $column)
     {
         return $this->getColumnMeta($column);
     }

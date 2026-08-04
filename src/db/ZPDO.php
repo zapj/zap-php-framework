@@ -89,7 +89,7 @@ class ZPDO extends PDO
         return parent::prepare($this->prepareSQL($query), $options);
     }
 
-    public function exec($statement): int|false
+    public function exec($statement)
     {
         $this->logQuery($statement, []);
         $result = parent::exec($this->prepareSQL($statement));
@@ -109,7 +109,7 @@ class ZPDO extends PDO
      * @param mixed  ...$fetch_mode_args PDO fetch modes (only used when no params)
      * @return PDOStatement|false
      */
-    public function query($query, $params = [], ...$fetch_mode_args): PDOStatement|false
+    public function query($query, $params = [], ...$fetch_mode_args)
     {
         $sql = $this->prepareSQL($query);
 
@@ -151,7 +151,7 @@ class ZPDO extends PDO
     /**
      * Insert a single row.
      */
-    public function insert(string $table, array $data): false|string
+    public function insert(string $table, array $data)
     {
         $names        = [];
         $placeholders = [];
@@ -433,22 +433,22 @@ class ZPDO extends PDO
 
     // ─── Schema / DDL ──────────────────────────────────────────
 
-    public function rawExec($statement): int|false
+    public function rawExec($statement)
     {
         return parent::exec($statement);
     }
 
-    public function renameTable($oldName, $newName): int|false
+    public function renameTable($oldName, $newName)
     {
         return $this->exec('RENAME TABLE ' . $this->quoteTable($oldName) . ' TO ' . $this->quoteTable($newName));
     }
 
-    public function dropTable($table): int|false
+    public function dropTable($table)
     {
         return $this->exec('DROP TABLE ' . $this->quoteTable($table));
     }
 
-    public function truncateTable($table): int|false
+    public function truncateTable($table)
     {
         return $this->exec('TRUNCATE TABLE ' . $this->quoteTable($table));
     }
@@ -591,27 +591,37 @@ class ZPDO extends PDO
             return $this->quoteColumn($colAlias[0]) . '.' . $this->quoteColumn($colAlias[1]);
         }
 
-        return match ($this->driver) {
-            'mysql', 'mariadb' => "`{$columnName}`",
-            'mssql'            => "[{$columnName}]",
-            'pgsql'            => '"' . $columnName . '"',
-            default            => $columnName,
-        };
+        switch ($this->driver) {
+            case 'mysql':
+            case 'mariadb':
+                return "`{$columnName}`";
+            case 'mssql':
+                return "[{$columnName}]";
+            case 'pgsql':
+                return '"' . $columnName . '"';
+            default:
+                return $columnName;
+        }
     }
 
     public function quoteTable($table): string
     {
         $table = $this->tablePrefix . $table;
 
-        return match ($this->driver) {
-            'mysql', 'mariadb' => '`' . $table . '`',
-            'mssql'            => "[{$table}]",
-            'pgsql'            => '"' . $table . '"',
-            default            => $table,
-        };
+        switch ($this->driver) {
+            case 'mysql':
+            case 'mariadb':
+                return '`' . $table . '`';
+            case 'mssql':
+                return "[{$table}]";
+            case 'pgsql':
+                return '"' . $table . '"';
+            default:
+                return $table;
+        }
     }
 
-    public function quote($value, $type = PDO::PARAM_STR): string|array
+    public function quote($value, $type = PDO::PARAM_STR)
     {
         if (is_array($value)) {
             return array_map(fn($v) => $this->quote($v), $value);
@@ -679,7 +689,7 @@ class ZPDO extends PDO
         return [implode(',', $params), $values];
     }
 
-    public function statement($statement, array $params = []): PDOStatement|false
+    public function statement($statement, array $params = [])
     {
         $stm = $this->prepare($statement);
         $stm->execute($params);
@@ -693,7 +703,7 @@ class ZPDO extends PDO
         return strtolower(trim($name, '_'));
     }
 
-    public function lastId(): false|string
+    public function lastId()
     {
         return $this->lastInsertId();
     }

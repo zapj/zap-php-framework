@@ -20,7 +20,7 @@
     "ext-simplexml": "*"
   },
   "autoload": {
-    "files": ["src/functions.php"],
+    "files": ["src/compat.php", "src/functions.php"],
     "psr-4": {
       "zap\\": "src/"
     }

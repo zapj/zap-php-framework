@@ -9,7 +9,7 @@ class Xml
      *
      * @throws \Exception
      */
-    public static function loadHtml(string $input, array $options = []): \SimpleXMLElement|\DOMDocument
+    public static function loadHtml(string $input, array $options = [])
     {
         $defaults = [
             'return' => 'simplexml',
@@ -79,7 +79,7 @@ class Xml
     /**
      * 转换为 JSON
      */
-    public static function toJson(\SimpleXMLElement $xml, int $flags = 0): string|false
+    public static function toJson(\SimpleXMLElement $xml, int $flags = 0)
     {
         return json_encode($xml, $flags);
     }

@@ -9,7 +9,7 @@ class Str
     /**
      * 字符串模板替换："{key}" → value
      */
-    public static function format(string $string, array|string $params, mixed $value = null): string
+    public static function format(string $string, $params, $value = null): string
     {
         if (is_array($params)) {
             $search = array_map(fn($key) => '{' . $key . '}', array_keys($params));
@@ -95,7 +95,7 @@ class Str
         return $needle !== '' && str_ends_with($needle, $haystack);
     }
 
-    public static function contains(string $haystack, string|array $needles): bool
+    public static function contains(string $haystack, $needles): bool
     {
         if (is_string($needles)) {
             return str_contains($haystack, $needles);
@@ -111,7 +111,7 @@ class Str
     /**
      * 检查是否包含所有 needles
      */
-    public static function containsAll(string $haystack, string|array $needles): bool
+    public static function containsAll(string $haystack, $needles): bool
     {
         if (is_string($needles)) {
             return str_contains($haystack, $needles);
@@ -125,7 +125,7 @@ class Str
     }
 
     /** @deprecated 使用 containsAll() */
-    public static function containsArray(string $haystack, string|array $needles): bool
+    public static function containsArray(string $haystack, $needles): bool
     {
         return self::containsAll($haystack, $needles);
     }

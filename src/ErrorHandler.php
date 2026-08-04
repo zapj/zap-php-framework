@@ -768,16 +768,21 @@ class ErrorHandler
 
         if (isset($frame['args']) && is_array($frame['args'])) {
             foreach ($frame['args'] as $arg) {
-                $args[] = match (true) {
-                    is_string($arg)  => "'" . (strlen($arg) > 30 ? substr($arg, 0, 30) . '...' : $arg) . "'",
-                    is_int($arg),
-                    is_float($arg)   => (string)$arg,
-                    is_bool($arg)    => $arg ? 'true' : 'false',
-                    is_null($arg)    => 'null',
-                    is_array($arg)   => 'Array(' . count($arg) . ')',
-                    is_object($arg)  => get_class($arg),
-                    default          => gettype($arg),
-                };
+                if (is_string($arg)) {
+                    $args[] = "'" . (strlen($arg) > 30 ? substr($arg, 0, 30) . '...' : $arg) . "'";
+                } elseif (is_int($arg) || is_float($arg)) {
+                    $args[] = (string)$arg;
+                } elseif (is_bool($arg)) {
+                    $args[] = $arg ? 'true' : 'false';
+                } elseif (is_null($arg)) {
+                    $args[] = 'null';
+                } elseif (is_array($arg)) {
+                    $args[] = 'Array(' . count($arg) . ')';
+                } elseif (is_object($arg)) {
+                    $args[] = get_class($arg);
+                } else {
+                    $args[] = gettype($arg);
+                }
             }
         }
 

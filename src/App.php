@@ -319,24 +319,24 @@ class App implements \ArrayAccess
         return isset(static::$container[$name]);
     }
 
-    public function get(string $name): mixed
+    public function get(string $name)
     {
         return static::$container[$name] ?? null;
     }
 
-    public function set(string $name, mixed $value): void
+    public function set(string $name, $value): void
     {
         static::$container[$name] = $value;
     }
 
     // ========== 魔术方法 ==========
 
-    public function __get(string $key): mixed
+    public function __get(string $key)
     {
         return static::$container[$key] ?? null;
     }
 
-    public function __set(string $key, mixed $value): void
+    public function __set(string $key, $value): void
     {
         static::$container[$key] = $value;
     }
@@ -356,22 +356,22 @@ class App implements \ArrayAccess
 
     // ========== ArrayAccess ==========
 
-    public function offsetExists(mixed $offset): bool
+    public function offsetExists($offset): bool
     {
         return isset(static::$container[$offset]);
     }
 
-    public function offsetGet(mixed $offset): mixed
+    public function offsetGet($offset)
     {
         return static::$container[$offset] ?? null;
     }
 
-    public function offsetSet(mixed $offset, mixed $value): void
+    public function offsetSet($offset, $value): void
     {
         static::$container[$offset] = $value;
     }
 
-    public function offsetUnset(mixed $offset): void
+    public function offsetUnset($offset): void
     {
         unset(static::$container[$offset]);
     }

@@ -42,7 +42,7 @@ class FileUtils
     /**
      * 获取 MIME 类型
      */
-    public static function mimeType(string $filename): string|false
+    public static function mimeType(string $filename)
     {
         if (!is_file($filename)) {
             return false;
@@ -92,7 +92,7 @@ class FileUtils
     /**
      * 读取文件内容
      */
-    public static function read(string $filename): string|false
+    public static function read(string $filename)
     {
         if (!is_file($filename)) {
             return false;
@@ -103,7 +103,7 @@ class FileUtils
     /**
      * 读取文件为数组（每行一个元素）
      */
-    public static function readFileToArray(string $filename, ?int $flags = null): array|false
+    public static function readFileToArray(string $filename, ?int $flags = null)
     {
         if ($flags === null) {
             return file($filename, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
@@ -113,7 +113,7 @@ class FileUtils
 
     // ========== 大小 ==========
 
-    public static function sizeOf(string $filename, bool $fmt = false): int|string
+    public static function sizeOf(string $filename, bool $fmt = false)
     {
         $size = @filesize($filename);
         if ($size === false) {

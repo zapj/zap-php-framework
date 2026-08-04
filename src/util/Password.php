@@ -11,7 +11,7 @@ class Password
      * @param int|string|null $algo 算法 (PASSWORD_DEFAULT / PASSWORD_BCRYPT / PASSWORD_ARGON2I / PASSWORD_ARGON2ID)
      * @param array $options 算法选项 ['cost' => 12]
      */
-    public static function hash(string $password, int|string|null $algo = PASSWORD_DEFAULT, array $options = []): string
+    public static function hash(string $password, $algo = PASSWORD_DEFAULT, array $options = []): string
     {
         if (is_string($algo)) {
             $algo = constant($algo);
@@ -30,7 +30,7 @@ class Password
     /**
      * 检查已存储的哈希是否需要重新生成
      */
-    public static function needsRehash(string $hash, int|string|null $algo = PASSWORD_DEFAULT, array $options = []): bool
+    public static function needsRehash(string $hash, $algo = PASSWORD_DEFAULT, array $options = []): bool
     {
         if (is_string($algo)) {
             $algo = constant($algo);

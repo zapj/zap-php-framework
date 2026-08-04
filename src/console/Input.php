@@ -109,7 +109,7 @@ class Input
     /**
      * 获取位置参数（1-based 索引兼容旧接口）
      */
-    public function getParam(int|string $name, mixed $default = null): mixed
+    public function getParam($name, $default = null)
     {
         if (is_int($name)) {
             return $this->params[$name - 1] ?? $default;
@@ -120,7 +120,7 @@ class Input
     /**
      * 按索引获取参数（0-based）
      */
-    public function getArgument(int $index, mixed $default = null): mixed
+    public function getArgument(int $index, $default = null)
     {
         return $this->arguments[$index] ?? $default;
     }
@@ -136,7 +136,7 @@ class Input
     /**
      * 获取命名选项
      */
-    public function getOption(string $name, mixed $default = null): mixed
+    public function getOption(string $name, $default = null)
     {
         return $this->options[$name] ?? $default;
     }
@@ -149,7 +149,7 @@ class Input
         return $this->options;
     }
 
-    public function hasParam(int|string $name): bool
+    public function hasParam($name): bool
     {
         if (is_int($name)) {
             return isset($this->params[$name - 1]);

@@ -299,7 +299,7 @@ abstract class Model implements ArrayAccess, JsonSerializable
         return array_key_exists($offset, $this->attributes);
     }
 
-    public function offsetGet($offset): mixed
+    public function offsetGet($offset)
     {
         return $this->getAttribute($offset);
     }
@@ -314,7 +314,7 @@ abstract class Model implements ArrayAccess, JsonSerializable
         unset($this->attributes[$offset]);
     }
 
-    public function jsonSerialize(): mixed
+    public function jsonSerialize()
     {
         return $this->toArray();
     }
@@ -383,15 +383,27 @@ abstract class Model implements ArrayAccess, JsonSerializable
             return $value;
         }
 
-        return match ($this->casts[$key]) {
-            'int', 'integer' => (int) $value,
-            'float', 'double', 'real' => (float) $value,
-            'string'         => (string) $value,
-            'bool', 'boolean' => (bool) $value,
-            'array', 'json'  => is_string($value) ? json_decode($value, true) : (array) $value,
-            'object'         => is_string($value) ? json_decode($value) : (object) $value,
-            default          => $value,
-        };
+        switch ($this->casts[$key]) {
+            case 'int':
+            case 'integer':
+                return (int) $value;
+            case 'float':
+            case 'double':
+            case 'real':
+                return (float) $value;
+            case 'string':
+                return (string) $value;
+            case 'bool':
+            case 'boolean':
+                return (bool) $value;
+            case 'array':
+            case 'json':
+                return is_string($value) ? json_decode($value, true) : (array) $value;
+            case 'object':
+                return is_string($value) ? json_decode($value) : (object) $value;
+            default:
+                return $value;
+        }
     }
 
     protected function castSet(string $key, $value)
@@ -400,11 +412,15 @@ abstract class Model implements ArrayAccess, JsonSerializable
             return $value;
         }
 
-        return match ($this->casts[$key]) {
-            'array', 'json' => is_string($value) ? $value : json_encode($value, JSON_UNESCAPED_UNICODE),
-            'object'         => is_string($value) ? $value : json_encode($value, JSON_UNESCAPED_UNICODE),
-            default          => $value,
-        };
+        switch ($this->casts[$key]) {
+            case 'array':
+            case 'json':
+                return is_string($value) ? $value : json_encode($value, JSON_UNESCAPED_UNICODE);
+            case 'object':
+                return is_string($value) ? $value : json_encode($value, JSON_UNESCAPED_UNICODE);
+            default:
+                return $value;
+        }
     }
 
     // ─── Save / Refresh ────────────────────────────────────────

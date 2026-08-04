@@ -144,7 +144,7 @@ class Output
     /**
      * 写入内容（支持样式标签）
      */
-    public function write(string $data): int|false
+    public function write(string $data)
     {
         return fwrite($this->stdout, $this->format($data));
     }
@@ -152,7 +152,7 @@ class Output
     /**
      * 写入一行
      */
-    public function writeln(string $data, bool $format = true): int|false
+    public function writeln(string $data, bool $format = true)
     {
         return fwrite($this->stdout, ($format ? $this->format($data) : $data) . PHP_EOL);
     }
@@ -160,7 +160,7 @@ class Output
     /**
      * 格式化输出
      */
-    public function printf(string $fmt, mixed ...$args): int
+    public function printf(string $fmt, ...$args): int
     {
         return fprintf($this->stdout, $this->format($fmt), ...$args);
     }
@@ -168,34 +168,34 @@ class Output
     /**
      * 写入错误输出
      */
-    public function writeError(string $data): int|false
+    public function writeError(string $data)
     {
         return fwrite($this->stderr, $this->format("<error>{$data}</error>"));
     }
 
     // ========== 快捷样式 ==========
 
-    public function info(string $data): int|false
+    public function info(string $data)
     {
         return $this->writeln("<info>{$data}</info>");
     }
 
-    public function error(string $data): int|false
+    public function error(string $data)
     {
         return $this->writeError($data);
     }
 
-    public function warning(string $data): int|false
+    public function warning(string $data)
     {
         return $this->writeln("<warning>{$data}</warning>");
     }
 
-    public function success(string $data): int|false
+    public function success(string $data)
     {
         return $this->writeln("<success>{$data}</success>");
     }
 
-    public function debug(string $data): int|false
+    public function debug(string $data)
     {
         return $this->writeln("<debug>{$data}</debug>");
     }
@@ -205,7 +205,7 @@ class Output
     /**
      * verbose >= 1 时输出
      */
-    public function writelnV(string $data): int|false
+    public function writelnV(string $data)
     {
         if ($this->verbose >= 1) {
             return $this->writeln($data);
@@ -216,7 +216,7 @@ class Output
     /**
      * verbose >= 2 时输出
      */
-    public function writelnVV(string $data): int|false
+    public function writelnVV(string $data)
     {
         if ($this->verbose >= 2) {
             return $this->writeln($data);
@@ -227,7 +227,7 @@ class Output
     /**
      * verbose >= 3 时输出（调试）
      */
-    public function writelnVVV(string $data): int|false
+    public function writelnVVV(string $data)
     {
         if ($this->verbose >= 3) {
             return $this->writeln($data);
@@ -238,7 +238,7 @@ class Output
     // ====== 兼容旧方法名 ======
 
     /** @deprecated 使用 writelnV() */
-    public function printlnV(string $fmt, mixed ...$args): int
+    public function printlnV(string $fmt, ...$args): int
     {
         if ($this->verbose >= 1) {
             return fprintf($this->stdout, $this->format($fmt) . PHP_EOL, ...$args);
@@ -247,7 +247,7 @@ class Output
     }
 
     /** @deprecated 使用 writelnVV() */
-    public function printlnVV(string $fmt, mixed ...$args): int
+    public function printlnVV(string $fmt, ...$args): int
     {
         if ($this->verbose >= 2) {
             return fprintf($this->stdout, $this->format($fmt) . PHP_EOL, ...$args);
@@ -256,7 +256,7 @@ class Output
     }
 
     /** @deprecated 使用 writelnVVV() */
-    public function printlnVVV(string $fmt, mixed ...$args): int
+    public function printlnVVV(string $fmt, ...$args): int
     {
         if ($this->verbose >= 3) {
             return fprintf($this->stdout, $this->format($fmt) . PHP_EOL, ...$args);

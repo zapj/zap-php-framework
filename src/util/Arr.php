@@ -7,7 +7,7 @@ class Arr
     /**
      * 点号分隔取值
      */
-    public static function get(array|object $array, string|int|null $key, mixed $default = null): mixed
+    public static function get($array, $key, $default = null)
     {
         if (is_null($key)) {
             return $array;
@@ -33,7 +33,7 @@ class Arr
     /**
      * 是否存在
      */
-    public static function has(array $array, string|null $key): bool
+    public static function has(array $array, ?string $key): bool
     {
         if (empty($array) || is_null($key)) {
             return false;
@@ -53,7 +53,7 @@ class Arr
     /**
      * 设置值（点号分隔）
      */
-    public static function set(array &$array, string|null $key, mixed $value): array
+    public static function set(array &$array, ?string $key, $value): array
     {
         if (is_null($key)) {
             return $array = $value;
@@ -85,7 +85,7 @@ class Arr
     }
 
     /** @deprecated 使用 only() */
-    public static function find(array $array, string|array $keys): array
+    public static function find(array $array, $keys): array
     {
         if (is_string($keys)) {
             return isset($array[$keys]) ? [$keys => $array[$keys]] : [];
@@ -151,7 +151,7 @@ class Arr
     /**
      * 从数组中随机取一个或多个元素
      */
-    public static function random(array $array, int $count = 1): mixed
+    public static function random(array $array, int $count = 1)
     {
         if (empty($array)) {
             return $count === 1 ? null : [];

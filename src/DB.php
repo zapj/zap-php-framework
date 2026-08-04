@@ -72,7 +72,7 @@ class DB
         }
     }
 
-    public static function transaction(callable $callback, ...$args): mixed
+    public static function transaction(callable $callback, ...$args)
     {
         try {
             self::beginTransaction();
@@ -106,7 +106,7 @@ class DB
      * @param array  $data   字段 => 值 的关联数组
      * @return false|string  成功返回新 ID，失败返回 false
      */
-    public static function insert(string $table, array $data): false|string
+    public static function insert(string $table, array $data)
     {
         return self::connection()->insert($table, $data);
     }
@@ -131,7 +131,7 @@ class DB
      * @param array  $duplicate  冲突时更新的字段
      * @param mixed  $primaryKeys 主键（仅 pgsql 需要）
      */
-    public static function upsert(string $table, array $data, ?array $duplicate = null, $primaryKeys = null): mixed
+    public static function upsert(string $table, array $data, ?array $duplicate = null, $primaryKeys = null)
     {
         return self::connection()->upsert($table, $data, $duplicate, $primaryKeys);
     }
@@ -153,7 +153,7 @@ class DB
      * @param array        $params      SQL 条件字符串的绑定参数
      * @return int  受影响行数
      */
-    public static function update(string $table, array $data, array|string $conditions = '', array $params = []): int
+    public static function update(string $table, array $data, $conditions = '', array $params = []): int
     {
         return self::connection()->update($table, $data, $conditions, $params);
     }
@@ -166,7 +166,7 @@ class DB
      * @param array        $params      条件字符串的绑定参数
      * @return int  受影响行数
      */
-    public static function delete(string $table, array|string $conditions = '', array $params = []): int
+    public static function delete(string $table, $conditions = '', array $params = []): int
     {
         return self::connection()->delete($table, $conditions, $params);
     }
@@ -174,7 +174,7 @@ class DB
     /**
      * 统计行数
      */
-    public static function count(string $table, array|string $conditions = '', array $params = []): int|string
+    public static function count(string $table, $conditions = '', array $params = [])
     {
         return self::connection()->count($table, $conditions, $params);
     }
@@ -182,7 +182,7 @@ class DB
     /**
      * 键值对查询
      */
-    public static function keyPair(string $table, array|string $columns, array|string $conditions = '', array $params = []): array
+    public static function keyPair(string $table, $columns, $conditions = '', array $params = []): array
     {
         return self::connection()->keyPair($table, $columns, $conditions, $params);
     }
@@ -212,7 +212,7 @@ class DB
      * @param array  $params 绑定参数
      * @return false|string  成功返回新 ID
      */
-    public static function execInsert(string $query, array $params = []): false|string
+    public static function execInsert(string $query, array $params = [])
     {
         $conn = self::connection();
         if (stripos(trim($query), 'INSERT') === 0) {
@@ -227,7 +227,7 @@ class DB
     /**
      * 执行原始 SQL 并返回 Statement（SELECT / 任意）
      */
-    public static function statement(string $query, array $params = []): \PDOStatement|false
+    public static function statement(string $query, array $params = [])
     {
         return self::connection()->statement($query, $params);
     }

@@ -88,7 +88,7 @@ abstract class Command
      * @param bool   $required    是否必填
      * @param mixed  $default     默认值
      */
-    public function addArgument(string $name, string $description = '', bool $required = false, mixed $default = null): static
+    public function addArgument(string $name, string $description = '', bool $required = false, $default = null): static
     {
         $this->arguments[$name] = compact('description', 'required', 'default');
         return $this;
@@ -110,7 +110,7 @@ abstract class Command
      * @param string $description 描述
      * @param mixed  $default     默认值
      */
-    public function addOption(string $name, string $shortcut = '', string $description = '', mixed $default = null): static
+    public function addOption(string $name, string $shortcut = '', string $description = '', $default = null): static
     {
         $this->options[$name] = compact('shortcut', 'description', 'default');
         return $this;

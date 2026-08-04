@@ -60,7 +60,7 @@ class Config
      * @param mixed  $default 默认值
      * @return mixed
      */
-    public static function get(string $name, mixed $default = null): mixed
+    public static function get(string $name, $default = null)
     {
         $keys = explode('.', $name);
         if (isset($keys[0]) && !static::instance()->has($keys[0])) {
@@ -98,7 +98,7 @@ class Config
     /**
      * 运行时设置配置值（支持点语法深度写入）
      */
-    public static function set(string $name, mixed $value): void
+    public static function set(string $name, $value): void
     {
         static::instance()->set($name, $value);
     }

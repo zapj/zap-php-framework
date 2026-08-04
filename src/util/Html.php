@@ -27,11 +27,14 @@ class Html
 
     public static function doctype(string $type = 'html5'): string
     {
-        return match ($type) {
-            'html4-strict' => '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">',
-            'html4-trans'  => '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">',
-            default        => '<!DOCTYPE html>',
-        };
+        switch ($type) {
+            case 'html4-strict':
+                return '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">';
+            case 'html4-trans':
+                return '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">';
+            default:
+                return '<!DOCTYPE html>';
+        }
     }
 
     /** @deprecated 使用 doctype() */

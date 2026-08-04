@@ -42,7 +42,7 @@ class Html
      * 创建有内容的元素
      * @param string|\Stringable|null $html  元素内容（传 null 跳过）
      */
-    public static function el(string $tagName, string|\Stringable|null $html = null, array $attributes = [], array $children = []): Element
+    public static function el(string $tagName, $html = null, array $attributes = [], array $children = []): Element
     {
         $el = new Element($tagName, $attributes, $children);
         if ($html !== null) {
@@ -54,7 +54,7 @@ class Html
     // ========== Convenience Methods ==========
 
     /** &lt;a href="..."&gt;content&lt;/a&gt; */
-    public static function a(string $href, string|\Stringable|null $content = null, array $attributes = []): Element
+    public static function a(string $href, $content = null, array $attributes = []): Element
     {
         return new Element('a', [...$attributes, 'href' => $href]);
     }
@@ -66,13 +66,13 @@ class Html
     }
 
     /** &lt;div&gt; */
-    public static function div(string|\Stringable|null $content = null, array $attributes = []): Element
+    public static function div($content = null, array $attributes = []): Element
     {
         return static::el('div', $content, $attributes);
     }
 
     /** &lt;span&gt; */
-    public static function span(string|\Stringable|null $content = null, array $attributes = []): Element
+    public static function span($content = null, array $attributes = []): Element
     {
         return static::el('span', $content, $attributes);
     }
@@ -97,7 +97,7 @@ class Html
     }
 
     /** &lt;select&gt; */
-    public static function select(array $options = [], mixed $selected = null, array $attributes = []): Element
+    public static function select(array $options = [], $selected = null, array $attributes = []): Element
     {
         $el = new Element('select', $attributes);
         foreach ($options as $val => $label) {
@@ -131,13 +131,13 @@ class Html
     }
 
     /** &lt;label&gt; */
-    public static function label(string $for, string|\Stringable|null $content = null, array $attributes = []): Element
+    public static function label(string $for, $content = null, array $attributes = []): Element
     {
         return static::el('label', $content, [...$attributes, 'for' => $for]);
     }
 
     /** &lt;button&gt; */
-    public static function button(string|\Stringable|null $content = null, string $type = 'submit', array $attributes = []): Element
+    public static function button($content = null, string $type = 'submit', array $attributes = []): Element
     {
         return static::el('button', $content, ['type' => $type, ...$attributes]);
     }
@@ -197,13 +197,13 @@ class Html
     }
 
     /** &lt;p&gt; */
-    public static function p(string|\Stringable|null $content = null, array $attributes = []): Element
+    public static function p($content = null, array $attributes = []): Element
     {
         return static::el('p', $content, $attributes);
     }
 
     /** &lt;h1&gt; ～ &lt;h6&gt; */
-    public static function h(int $level, string|\Stringable|null $content = null, array $attributes = []): Element
+    public static function h(int $level, $content = null, array $attributes = []): Element
     {
         $tag = 'h' . max(1, min(6, $level));
         return static::el($tag, $content, $attributes);

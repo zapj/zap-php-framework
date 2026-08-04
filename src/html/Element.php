@@ -9,9 +9,7 @@
 
 namespace zap\html;
 
-use Stringable;
-
-class Element implements Stringable
+class Element implements \Stringable
 {
     /** @var string[] Void elements — never have closing tags */
     private const VOID_ELEMENTS = [
@@ -43,7 +41,7 @@ class Element implements Stringable
      * 设置单个属性
      * @param mixed $value  true 渲染为布尔属性，null/false 则移除该属性
      */
-    public function attr(string $name, mixed $value = true): static
+    public function attr(string $name, $value = true): static
     {
         $this->attributes[$name] = $value;
         return $this;
@@ -82,7 +80,7 @@ class Element implements Stringable
     }
 
     /** 设置 data-* 属性 */
-    public function data(string $name, mixed $value): static
+    public function data(string $name, $value): static
     {
         $this->attributes['data-' . $name] = $value;
         return $this;
@@ -103,7 +101,7 @@ class Element implements Stringable
      * 设置原始 HTML 内容
      * @param string|Stringable $html
      */
-    public function html(string|Stringable $html): static
+    public function html($html): static
     {
         $this->html = (string) $html;
         return $this;
@@ -112,7 +110,7 @@ class Element implements Stringable
     // ========== Children Methods ==========
 
     /** 追加子节点 */
-    public function append(self|string ...$children): static
+    public function append(...$children): static
     {
         foreach ($children as $child) {
             $this->children[] = is_string($child) ? $child : $child;
@@ -121,7 +119,7 @@ class Element implements Stringable
     }
 
     /** 前置子节点 */
-    public function prepend(self|string ...$children): static
+    public function prepend(...$children): static
     {
         $items = [];
         foreach ($children as $child) {

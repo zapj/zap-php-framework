@@ -115,7 +115,7 @@ class Date
     /**
      * 计算距今时间（如 "3分钟前"）
      */
-    public static function ago(string|int $datetime): string
+    public static function ago($datetime): string
     {
         if (is_numeric($datetime)) {
             $timestamp = (int) $datetime;

@@ -66,7 +66,7 @@ if (!function_exists('app')) {
      * @param mixed       $value 非 null 时注册到容器
      * @return App|mixed
      */
-    function app(?string $name = null, mixed $value = null): mixed
+    function app(?string $name = null, $value = null)
     {
         $app = App::instance();
 
@@ -171,7 +171,7 @@ if (!function_exists('config')) {
      * @param mixed  $default 默认值
      * @return mixed
      */
-    function config(string $name, mixed $default = null): mixed
+    function config(string $name, $default = null)
     {
         if (func_num_args() > 1) {
             Config::set($name, $default);
@@ -183,7 +183,7 @@ if (!function_exists('config')) {
 }
 
 if (!function_exists('config_set')) {
-    function config_set(string $name, mixed $value): void
+    function config_set(string $name, $value): void
     {
         Config::set($name, $value);
     }
@@ -265,7 +265,7 @@ if (!function_exists('url_to')) {
 }
 
 if (!function_exists('url_action')) {
-    function url_action(string $controller, mixed $queryParams = null, mixed $pathParams = null): string
+    function url_action(string $controller, $queryParams = null, $pathParams = null): string
     {
         return \zap\facades\Url::action($controller, $queryParams, $pathParams);
     }
@@ -317,7 +317,7 @@ if (!function_exists('register_scripts')) {
      * @param string|array $urls   单个 URL 或 URL 数组
      * @param string       $position ASSETS_HEAD | ASSETS_BODY
      */
-    function register_scripts(string|array $urls, string $position = ASSETS_HEAD): void
+    function register_scripts($urls, string $position = ASSETS_HEAD): void
     {
         $key = 'scripts_' . $position;
         if (!app()->has($key)) {
@@ -341,7 +341,7 @@ if (!function_exists('register_styles')) {
      * @param string|array $urls   单个 URL 或 URL 数组
      * @param string       $position ASSETS_HEAD | ASSETS_BODY
      */
-    function register_styles(string|array $urls, string $position = ASSETS_HEAD): void
+    function register_styles($urls, string $position = ASSETS_HEAD): void
     {
         $key = 'styles_' . $position;
         if (!app()->has($key)) {
@@ -434,14 +434,14 @@ if (!function_exists('session')) {
 }
 
 if (!function_exists('set_session')) {
-    function set_session(string $name, mixed $value): void
+    function set_session(string $name, $value): void
     {
         Session::put($name, $value);
     }
 }
 
 if (!function_exists('get_session')) {
-    function get_session(string $name, mixed $default = null): mixed
+    function get_session(string $name, $default = null)
     {
         return Session::get($name, $default);
     }
@@ -474,7 +474,7 @@ if (!function_exists('get_flash')) {
      * @param bool        $first true 仅返回第一条
      * @return array|string|false
      */
-    function get_flash(?string $type = null, bool $first = false): mixed
+    function get_flash(?string $type = null, bool $first = false)
     {
         if ($type !== null && $first) {
             $flash = Session::getFlash($type);
@@ -499,7 +499,7 @@ if (!function_exists('clear_flash')) {
 }
 
 if (!function_exists('old')) {
-    function old(?string $key = null, mixed $default = null): mixed
+    function old(?string $key = null, $default = null)
     {
         return Session::old($key, $default);
     }
@@ -558,7 +558,7 @@ if (!function_exists('abort')) {
      * @return never
      * @throws \zap\exception\HttpException
      */
-    function abort(int $statusCode = 500, string $message = '', array $headers = []): never
+    function abort(int $statusCode = 500, string $message = '', array $headers = []): void
     {
         ErrorHandler::abort($statusCode, $message, $headers);
     }
@@ -575,7 +575,7 @@ if (!function_exists('report')) {
 }
 
 if (!function_exists('response')) {
-    function response(mixed $content = null, int $statusCode = 200, ?array $headers = []): Response
+    function response($content = null, int $statusCode = 200, ?array $headers = []): Response
     {
         return new Response($content, $statusCode, $headers);
     }
@@ -665,7 +665,7 @@ if (!function_exists('zap_pp')) {
     /**
      * 格式化打印变量（调试用，输出后终止脚本）
      */
-    function zap_pp(mixed ...$params): void
+    function zap_pp(...$params): void
     {
         echo '<pre class="prettyprint" style="background:#000;border-radius:6px;color:#fff;padding:15px;font-size:14px;">';
         foreach ($params as $value) {
@@ -781,7 +781,7 @@ if (!function_exists('base64_url_decode')) {
 // ============================================================
 
 if (!function_exists('object_get')) {
-    function object_get(mixed $object, ?string $key, mixed $default = null): mixed
+    function object_get($object, ?string $key, $default = null)
     {
         if ($key === null || trim($key) === '') {
             return $object;
@@ -797,7 +797,7 @@ if (!function_exists('object_get')) {
 }
 
 if (!function_exists('arr_get')) {
-    function arr_get(array &$array, string $key, mixed $default = null, ?callable $type = null): mixed
+    function arr_get(array &$array, string $key, $default = null, ?callable $type = null)
     {
         $value = Arr::get($array, $key, $default);
         return $type ? $type($value) : $value;
@@ -812,7 +812,7 @@ if (!function_exists('arr_has')) {
 }
 
 if (!function_exists('arr_set')) {
-    function arr_set(array &$array, string $key, mixed $value): void
+    function arr_set(array &$array, string $key, $value): void
     {
         Arr::set($array, $key, $value);
     }
@@ -822,7 +822,7 @@ if (!function_exists('arrayToObject')) {
     /**
      * 递归地将数组转换为 stdClass
      */
-    function arrayToObject(mixed $array): mixed
+    function arrayToObject($array)
     {
         if (!is_array($array)) {
             return $array;
@@ -843,7 +843,7 @@ if (!function_exists('objectToArray')) {
     /**
      * 递归地将对象转换为数组
      */
-    function objectToArray(object|array $obj): array
+    function objectToArray($obj): array
     {
         return json_decode(json_encode($obj, JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR);
     }
@@ -861,7 +861,7 @@ if (!function_exists('is_assoc')) {
 // ============================================================
 
 if (!function_exists('zarray')) {
-    function zarray(string|array|object|null $data = []): \zap\util\ZArray
+    function zarray($data = []): \zap\util\ZArray
     {
         return new \zap\util\ZArray($data);
     }
@@ -886,7 +886,7 @@ if (!function_exists('logger')) {
 }
 
 if (!function_exists('trans')) {
-    function trans(string $key, mixed $params = null, mixed $value = null): string
+    function trans(string $key, $params = null, $value = null): string
     {
         return \zap\i18n\Language::trans($key, $params, $value);
     }
@@ -938,14 +938,14 @@ if (!function_exists('add_action')) {
 }
 
 if (!function_exists('apply_filters')) {
-    function apply_filters(string $hookName, mixed $value, mixed ...$args): mixed
+    function apply_filters(string $hookName, $value, ...$args)
     {
         return Hooks::instance()->apply_filters($hookName, $value, ...$args);
     }
 }
 
 if (!function_exists('do_action')) {
-    function do_action(string $hookName, mixed ...$args): void
+    function do_action(string $hookName, ...$args): void
     {
         Hooks::instance()->do_action($hookName, ...$args);
     }
@@ -986,7 +986,7 @@ if (!function_exists('event_fire')) {
      * @param string $eventName 事件名称
      * @param mixed  ...$args   传递给处理器的参数
      */
-    function event_fire(string $eventName, mixed ...$args): void
+    function event_fire(string $eventName, ...$args): void
     {
         $eventsDir = base_path('events/');
         $eventFile = $eventsDir . $eventName . '.php';
@@ -1002,14 +1002,14 @@ if (!function_exists('event_fire')) {
 // ============================================================
 
 if (!function_exists('zap_cache_get')) {
-    function zap_cache_get(string $key): mixed
+    function zap_cache_get(string $key)
     {
         return apcu_fetch($key);
     }
 }
 
 if (!function_exists('zap_cache_set')) {
-    function zap_cache_set(string $key, mixed $value, int $ttl = 0): bool
+    function zap_cache_set(string $key, $value, int $ttl = 0): bool
     {
         return apcu_store($key, $value, $ttl);
     }

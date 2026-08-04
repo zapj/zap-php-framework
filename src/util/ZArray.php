@@ -37,7 +37,6 @@ class ZArray implements IteratorAggregate, ArrayAccess, Serializable, Countable
 
     // ========== IteratorAggregate ==========
 
-    #[\ReturnTypeWillChange]
     public function getIterator(): Traversable
     {
         return new ArrayIterator($this->elements);
@@ -63,7 +62,6 @@ class ZArray implements IteratorAggregate, ArrayAccess, Serializable, Countable
         return true;
     }
 
-    #[\ReturnTypeWillChange]
     public function &offsetGet($offset)
     {
         $notFound = null;
@@ -108,7 +106,6 @@ class ZArray implements IteratorAggregate, ArrayAccess, Serializable, Countable
         }
     }
 
-    #[\ReturnTypeWillChange]
     public function offsetUnset($offset): void
     {
         if ($this->offsetExists($offset)) {
@@ -118,7 +115,6 @@ class ZArray implements IteratorAggregate, ArrayAccess, Serializable, Countable
 
     // ========== Countable ==========
 
-    #[\ReturnTypeWillChange]
     public function count(): int
     {
         return count($this->elements);
@@ -154,7 +150,7 @@ class ZArray implements IteratorAggregate, ArrayAccess, Serializable, Countable
 
     // ========== 公开方法 ==========
 
-    public function &get(string $key, mixed $default = null): mixed
+    public function &get(string $key, $default = null)
     {
         if (!$this->offsetExists($key)) {
             return $default;
@@ -162,7 +158,7 @@ class ZArray implements IteratorAggregate, ArrayAccess, Serializable, Countable
         return $this->offsetGet($key);
     }
 
-    public function set(string $key, mixed $value): void
+    public function set(string $key, $value): void
     {
         $this->offsetSet($key, $value);
     }
