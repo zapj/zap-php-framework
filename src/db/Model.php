@@ -517,9 +517,21 @@ abstract class Model implements ArrayAccess, JsonSerializable
     }
 
     /**
-     * Delete the model from the database.
+     * Delete records by conditions (static).
      */
-    public function delete(): bool
+    public static function delete(array $conditions = []): int
+    {
+        $query = static::createQuery();
+        if (!empty($conditions)) {
+            $query->where($conditions);
+        }
+        return $query->delete();
+    }
+
+    /**
+     * Delete the model instance from the database.
+     */
+    public function remove(): bool
     {
         $id = $this->getId();
         if (!$id) {
@@ -584,11 +596,6 @@ abstract class Model implements ArrayAccess, JsonSerializable
         // select/orderBy/fetchColumn or first/get themselves
         if ($method === 'find' && !empty($parameters) && is_array($parameters[0])) {
             return $query->where($parameters[0]);
-        }
-
-        // Handle delete() with array conditions instead of a single id value
-        if ($method === 'delete' && !empty($parameters) && is_array($parameters[0])) {
-            return $query->where($parameters[0])->delete();
         }
 
         return $query->$method(...$parameters);
