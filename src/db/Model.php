@@ -517,15 +517,27 @@ abstract class Model implements ArrayAccess, JsonSerializable
     }
 
     /**
-     * Delete records by conditions (static).
+     * Delete records by conditions or primary key (static).
+     *
+     * @param int|string|array $conditions Array of where conditions, or a single primary key value
      */
-    public static function delete(array $conditions = []): int
+    public static function delete($conditions = []): int
     {
         $query = static::createQuery();
-        if (!empty($conditions)) {
+        if (is_array($conditions) && !empty($conditions)) {
             $query->where($conditions);
         }
-        return $query->delete();
+        return $query->delete(is_array($conditions) ? null : $conditions);
+    }
+
+    /**
+     * Create and save a new record (static).
+     */
+    public static function create(array $attributes = [])
+    {
+        $model = new static($attributes);
+        $model->save();
+        return $model->getId() ? $model : null;
     }
 
     /**
@@ -596,6 +608,13 @@ abstract class Model implements ArrayAccess, JsonSerializable
         // select/orderBy/fetchColumn or first/get themselves
         if ($method === 'find' && !empty($parameters) && is_array($parameters[0])) {
             return $query->where($parameters[0]);
+        }
+
+        // Handle updateAll(): updateAll($data, $conditions)
+        if ($method === 'updateAll' && !empty($parameters)) {
+            $data  = $parameters[0] ?? [];
+            $conds = $parameters[1] ?? [];
+            return $query->where($conds)->update($data);
         }
 
         return $query->$method(...$parameters);
