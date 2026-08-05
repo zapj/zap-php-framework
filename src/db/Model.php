@@ -339,57 +339,6 @@ abstract class Model implements ArrayAccess, JsonSerializable
         return $this->toJson();
     }
 
-    /**
-     * Forward instance method calls to a query scoped to this model.
-     */
-    public function __call($method, $parameters)
-    {
-        $query = static::createQuery()->where($this->primaryKey, '=', $this->getId());
-        return $query->$method(...$parameters);
-    }
-
-    /**
-     * Forward static method calls to query builder.
-     * Supports: find(array), findByXxx, delete(array), and other Query methods.
-     */
-    public static function __callStatic($method, $parameters)
-    {
-        $query = static::createQuery();
-
-        // Dynamic finder: findByUserName → WHERE user_name = ?
-        if (str_starts_with(strtolower($method), 'findby')) {
-            $colName = str_ireplace('findBy', '', $method);
-            $colName = preg_replace('/([A-Z])/', '_$1', $colName);
-            $colName = strtolower(trim($colName, '_'));
-
-            if (str_contains($colName, '_and_')) {
-                $cols  = explode('_and_', $colName);
-                foreach ($cols as $i => $c) {
-                    if (isset($parameters[$i])) {
-                        $query->where($c, '=', $parameters[$i]);
-                    }
-                }
-                $query->limit(1);
-                $row = $query->get();
-                return !empty($row) ? new static((array) $row[0]) : null;
-            }
-
-            return $query->where($colName, '=', $parameters[0] ?? null)->get();
-        }
-
-        // find(array) → return Query with WHERE applied (for chaining)
-        if ($method === 'find' && !empty($parameters) && is_array($parameters[0])) {
-            return $query->where($parameters[0]);
-        }
-
-        // delete(array) → delete by conditions
-        if ($method === 'delete' && !empty($parameters) && is_array($parameters[0])) {
-            return $query->where($parameters[0])->delete();
-        }
-
-        return $query->$method(...$parameters);
-    }
-
     // ─── Mass Assignment ───────────────────────────────────────
 
     /**
