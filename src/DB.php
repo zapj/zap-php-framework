@@ -237,11 +237,11 @@ class DB
     /**
      * 执行原始 SQL 语句（SELECT / 任意），返回受影响行数
      */
-    public static function query(string $query, array $params = [])
+    public static function query(string $query, array $params = []): int
     {
         $stm = self::connection()->prepare($query);
         $stm->execute($params);
-        return $stm;
+        return $stm->rowCount();
     }
 
     /**
