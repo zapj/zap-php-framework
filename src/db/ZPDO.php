@@ -148,7 +148,7 @@ class ZPDO extends PDO
         $stm = $this->prepare($query);
         $stm->execute($params);
         $this->rowCount = $stm->rowCount();
-        return $stm->fetchAll();
+        return $stm->fetchAll(...$fetch_mode_args ?: [PDO::FETCH_ASSOC]);
     }
 
     // ─── CRUD Operations ───────────────────────────────────────

@@ -247,9 +247,9 @@ class DB
     /**
      * 执行 SELECT 并返回所有结果
      */
-    public static function select(string $query, array $params = []): array
+    public static function select(string $query, array $params = [], int $fetchMode = PDO::FETCH_ASSOC): array
     {
-        return self::connection()->select($query, $params);
+        return self::connection()->select($query, $params, $fetchMode);
     }
 
     // ==================================================================

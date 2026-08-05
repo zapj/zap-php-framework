@@ -157,12 +157,13 @@ class UrlHelper
             $uri = $prefix . '/' . ltrim($uri, '/');
         }
 
+        $uri = '/' . ltrim($uri, '/');
+        $uri = strtolower($uri);
+
         // Replace path params in the action string
         foreach ($pathParams as $key => $value) {
             $uri = str_replace('{' . $key . '}', urlencode($value), $uri);
         }
-
-        $uri = '/' . ltrim($uri, '/');
 
         if (!empty($queryParams)) {
             $uri .= (str_contains($uri, '?') ? '&' : '?') . http_build_query($queryParams);
