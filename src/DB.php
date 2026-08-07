@@ -2,6 +2,7 @@
 
 namespace zap;
 
+use zap\db\Expr;
 use zap\db\ZPDO;
 
 class DB
@@ -135,6 +136,33 @@ class DB
     public static function table(string $table, ?string $alias = null): \zap\db\Query
     {
         return self::connection()->table($table, $alias);
+    }
+
+    // ==================================================================
+    //  表达式（Raw Expression）
+    // ==================================================================
+
+    /**
+     * 创建原始表达式，禁止参数绑定，直接拼入 SQL。
+     *
+     * 用于 Query Builder 的 set/where 等需要原始表达式的场景。
+     *
+     * @param string $value 原始 SQL 片段
+     * @return Expr
+     *
+     * @example
+     *   // 更新时自增计数器
+     *   DB::table('posts')->where('id', 1)->update(['hits' => DB::raw('hits + 1')]);
+     *
+     *   // where 中使用函数
+     *   DB::table('users')->where('created_at', '>', DB::raw('NOW()'))->getAll();
+     *
+     *   // CRUD 快捷方法中使用
+     *   DB::update('posts', ['hits' => DB::raw('hits + 1'), 'updated_at' => DB::raw('NOW()')], ['id' => 1]);
+     */
+    public static function raw(string $value): Expr
+    {
+        return new Expr($value);
     }
 
     // ==================================================================
