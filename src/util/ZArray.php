@@ -8,9 +8,8 @@ use Exception;
 use IteratorAggregate;
 use Traversable;
 use ArrayIterator;
-use Serializable;
 
-class ZArray implements IteratorAggregate, ArrayAccess, Serializable, Countable
+class ZArray implements IteratorAggregate, ArrayAccess, Countable
 {
     protected array $elements;
 
@@ -63,6 +62,7 @@ class ZArray implements IteratorAggregate, ArrayAccess, Serializable, Countable
         return true;
     }
 
+    #[\ReturnTypeWillChange]
     public function &offsetGet($offset)
     {
         $notFound = null;

@@ -20,7 +20,7 @@ class Expr
         return new static($value);
     }
 
-    public function __toString() {
-        return $this->raw;
+    public function __toString(): string {
+        return (string) $this->raw;
     }
 }

@@ -304,6 +304,7 @@ abstract class Model implements ArrayAccess, JsonSerializable
         return array_key_exists($offset, $this->attributes);
     }
 
+    #[\ReturnTypeWillChange]
     public function offsetGet($offset)
     {
         return $this->getAttribute($offset);
@@ -319,6 +320,7 @@ abstract class Model implements ArrayAccess, JsonSerializable
         unset($this->attributes[$offset]);
     }
 
+    #[\ReturnTypeWillChange]
     public function jsonSerialize()
     {
         return $this->toArray();

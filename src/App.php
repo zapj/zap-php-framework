@@ -382,6 +382,7 @@ class App implements \ArrayAccess
         return isset(static::$container[$offset]);
     }
 
+    #[\ReturnTypeWillChange]
     public function offsetGet($offset)
     {
         return static::$container[$offset] ?? null;

@@ -269,7 +269,7 @@ class View
         unset($this->params[$name]);
     }
 
-    public function __toString()
+    public function __toString(): string
     {
         try {
             return $this->display(true) ?? '';
