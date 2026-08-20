@@ -18,7 +18,9 @@ class FileCache implements CacheInterface
         $this->isCache = $options['isCache'] == 'enabled';
 
         if(!is_dir($this->cacheDir)){
-            throw new CacheException('invalid cacheDir "'.$this->cacheDir.'"');
+            if(!@mkdir($this->cacheDir, 0755, true) && !is_dir($this->cacheDir)){
+                throw new CacheException('invalid cacheDir "'.$this->cacheDir.'"');
+            }
         }
 
         if(!is_writable($this->cacheDir)){
