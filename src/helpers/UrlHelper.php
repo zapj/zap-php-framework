@@ -185,7 +185,11 @@ class UrlHelper
         $pathParams = is_array($pathParams) ? $pathParams : [];
         
 
-        [$controller,$action] = explode('@',$action);
+        // 兼容 "Controller@Action" / "Controller/Action" / "Controller" 三种写法，
+        // 无 "@" 时避免 explode 解构越界触发 Undefined array key 警告
+        $parts = explode('@', $action);
+        $controller = $parts[0] ?? '';
+        $action     = $parts[1] ?? '';
         $controller = strtolower(trim(preg_replace('/([A-Z])/', '-$1', $controller),'-'));
         $action = strtolower(trim(preg_replace('/([A-Z])/', '-$1', $action),'-'));
         $uri = '';
